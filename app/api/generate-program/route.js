@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-server";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+const supabaseAdmin = getSupabaseAdmin();
 
 /**
  * Determine maturity stage from offset value.
