@@ -11,6 +11,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const coach_id = searchParams.get("coach_id");
+    const includePlayers = searchParams.get("include_players") === "true";
 
     if (!coach_id) {
       return NextResponse.json(
@@ -19,9 +20,13 @@ export async function GET(request) {
       );
     }
 
+    const selectStr = includePlayers
+      ? "*, mf_players(id, name, email, position, status, xp, level)"
+      : "*, mf_players(count)";
+
     const { data: teams, error } = await supabaseAdmin
       .from("mf_teams")
-      .select("*, mf_players(count)")
+      .select(selectStr)
       .eq("coach_id", coach_id)
       .order("created_at", { ascending: false });
 
@@ -29,14 +34,20 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Flatten the player count
-    const result = teams.map((t) => ({
-      ...t,
-      player_count: t.mf_players?.[0]?.count ?? 0,
-      mf_players: undefined,
-    }));
+    const result = includePlayers
+      ? teams.map((t) => ({
+          ...t,
+          players: t.mf_players || [],
+          player_count: (t.mf_players || []).length,
+          mf_players: undefined,
+        }))
+      : teams.map((t) => ({
+          ...t,
+          player_count: t.mf_players?.[0]?.count ?? 0,
+          mf_players: undefined,
+        }));
 
-    return NextResponse.json(result);
+    return NextResponse.json({ teams: result });
   } catch (err) {
     console.error("GET /api/teams error:", err);
     return NextResponse.json(

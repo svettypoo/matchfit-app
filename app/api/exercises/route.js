@@ -48,7 +48,7 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(exercises);
+    return NextResponse.json({ exercises });
   } catch (err) {
     console.error("GET /api/exercises error:", err);
     return NextResponse.json(

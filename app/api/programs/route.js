@@ -31,7 +31,7 @@ export async function GET(request) {
       mf_program_days: undefined,
     }));
 
-    return NextResponse.json(result);
+    return NextResponse.json({ programs: result });
   } catch (err) {
     console.error("GET /api/programs error:", err);
     return NextResponse.json(
