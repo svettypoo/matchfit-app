@@ -12,7 +12,7 @@ export default function StatsCard({ icon, label, value, suffix = '', trend, colo
   return (
     <div className={`rounded-xl border p-4 ${colorMap[color] || colorMap.green}`}>
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xl" dangerouslySetInnerHTML={{ __html: icon }} />
+        <span className="text-xl">{typeof icon === 'string' ? <span dangerouslySetInnerHTML={{ __html: icon }} /> : icon}</span>
         <span className="text-xs font-medium opacity-70">{label}</span>
       </div>
       <div className="flex items-end gap-1">
