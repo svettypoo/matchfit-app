@@ -250,7 +250,8 @@ export default function AdminFeedPage() {
       try {
         const teamsRes = await fetch(`/api/teams?coach_id=${u.id}`);
         if (teamsRes.ok) {
-          const t = await teamsRes.json();
+          const data = await teamsRes.json();
+          const t = data.teams || data || [];
           setTeams(t);
           if (t.length > 0) {
             setSelectedTeam(t[0]);
