@@ -1,0 +1,37 @@
+Welcome to MatchFit, the all-in-one fitness platform that connects coaches with their athletes. Let me walk you through how it works!
+
+Here's the coach dashboard. At a glance, you can see your active players, average compliance, team streaks, and who needs attention. The top performers are ranked right here, so you always know who's crushing it.
+
+The Teams page lets you manage multiple squads. Create teams by age group, set seasons, and track how many players are in each one. Super simple.
+
+Next up, Programs. This is where the magic happens. Build custom training programs with multiple workout days. Assign them to your team, and every player automatically gets their schedule.
+
+Check out the Exercise Library. Over 20 exercises across 8 categories: strength, speed, agility, ball work, flexibility, core, plyometrics, and recovery. Filter by difficulty, or by exercise type: independent, partner, or group workouts.
+
+Click any exercise to see the full details. Instructions, coaching tips, muscle groups targeted, equipment needed, and tracking fields. Everything a coach needs to build world-class programs.
+
+The Calendar gives you a bird's eye view of your team's training schedule. See who's working out on which days, and spot any gaps in the program.
+
+Stay connected with the built-in messaging system. Send individual or group messages to your players. Communication is key to athlete development.
+
+The Wellness dashboard is a game changer. Monitor your athletes' sleep, energy, soreness, mood, and stress levels. Catch overtraining before it becomes an injury.
+
+Now let's look at an individual player. Here's Maria Garcia's profile. You can see her level, XP, streak, compliance, and all her badges at a glance.
+
+And here's the brand new Progress tab from the coach's perspective. Beautiful interactive charts showing weekly workouts, XP earned, and volume trends over time. Coaches can track every player's fitness journey with real data.
+
+Now let's switch to the player experience. This is what athletes see when they log in. Today's workout is front and center, along with their streak, XP level, weekly compliance, and readiness score.
+
+The player's Calendar shows their upcoming workouts and completed sessions. Green means done, making it easy to stay on track.
+
+The Progress page is where it gets really exciting. The Overall tab shows your level, total XP, streak, compliance percentage, and weekly workout charts. Athletes can see exactly how they're improving.
+
+Switch to the Exercises tab and you get individual exercise tracking. See your Romanian Deadlift go from 50 kilos to 60 and a half kilos over 8 weeks. Sessions, current weight, progression, and best volume, all visualized in beautiful charts.
+
+The Categories tab groups everything by muscle group. Strength category showing 35 sessions and 58 thousand in total volume. Weekly volume charts let you spot trends and adjust your training.
+
+Every player has their own profile with personal info, positions, team details, and achievements. It's their fitness identity.
+
+And when you finish a workout? Boom! Workout Complete with XP earned. That gamification keeps athletes coming back day after day.
+
+That's MatchFit. Smart programming, real-time tracking, beautiful analytics, and gamification that actually works. Train like a pro. Play like a champion.

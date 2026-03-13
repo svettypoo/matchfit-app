@@ -119,11 +119,31 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Today's Workout</h2>
           {todayWorkout && !todayWorkout.rest_day && todayWorkout.workout ? (
             <WorkoutCard workout={todayWorkout.workout} />
-          ) : (
+          ) : todayWorkout?.rest_day ? (
             <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-green-200">
               <svg className="w-10 h-10 mx-auto mb-2 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
               <h3 className="font-semibold text-gray-900">Rest Day</h3>
-              <p className="text-gray-500 text-sm">Recovery is part of the process. Stay hydrated!</p>
+              <p className="text-gray-500 text-sm">Recovery is part of the process. Stay hydrated and stretch!</p>
+              <div className="mt-3 flex gap-2 justify-center">
+                <Link href="/dashboard/progress" className="text-xs text-green-600 font-medium hover:text-green-700">View Progress</Link>
+                <span className="text-gray-300">|</span>
+                <Link href="/dashboard/feed" className="text-xs text-green-600 font-medium hover:text-green-700">Check Team Feed</Link>
+              </div>
+            </div>
+          ) : !todayWorkout ? (
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-amber-200">
+              <svg className="w-10 h-10 mx-auto mb-2 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+              <h3 className="font-semibold text-gray-900">No Workout Assigned</h3>
+              <p className="text-gray-500 text-sm">Your coach hasn't assigned a workout yet — check back soon!</p>
+              <div className="mt-3">
+                <Link href="/dashboard/feed" className="text-xs text-green-600 font-medium hover:text-green-700">Browse Team Feed</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-200">
+              <svg className="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+              <h3 className="font-semibold text-gray-900">Getting Started</h3>
+              <p className="text-gray-500 text-sm">Join a team to receive your training program!</p>
             </div>
           )}
         </div>

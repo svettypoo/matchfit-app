@@ -400,8 +400,8 @@ export default function ProgressPage() {
 
                 {/* Weekly Volume */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <h3 className="font-semibold text-gray-700 mb-3">Weekly Volume (hundreds)</h3>
-                  <RechartsBar data={catChartData} dataKey="volume" color="#8b5cf6" />
+                  <h3 className="font-semibold text-gray-700 mb-3">Weekly Volume</h3>
+                  <RechartsBar data={catChartData} dataKey="volume" color="#0d9488" />
                 </div>
 
                 {/* Sessions per Week */}
