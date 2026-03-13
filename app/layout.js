@@ -7,9 +7,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "MatchFit — Soccer Fitness Platform",
-  description:
-    "The ultimate soccer fitness platform for coaches and players. Personalized training programs, wellness tracking, and team management built on exercise science.",
+  title: "MatchFit",
+  description: "Soccer fitness platform for peak performance",
 };
 
 export default function RootLayout({ children }) {

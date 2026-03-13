@@ -1,0 +1,12 @@
+*
+!app/
+!components/
+!lib/
+!public/
+!package.json
+!package-lock.json
+!next.config.mjs
+!tailwind.config.js
+!postcss.config.mjs
+!jsconfig.json
+!Dockerfile
