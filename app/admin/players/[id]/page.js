@@ -3,8 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import SimpleChart from '../../../../components/SimpleChart';
+import dynamic from 'next/dynamic';
 
-const TABS = ['Overview', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
+const LineChart = dynamic(() => import('recharts').then(m => m.LineChart), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(m => m.Line), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
+
+const TABS = ['Overview', 'Progress', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
 
 export default function PlayerDetailPage() {
   const { id } = useParams();
@@ -14,6 +26,10 @@ export default function PlayerDetailPage() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [progressData, setProgressData] = useState(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -27,6 +43,22 @@ export default function PlayerDetailPage() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== 'Progress') return;
+    async function loadProgress() {
+      setProgressLoading(true);
+      try {
+        const params = new URLSearchParams({ weeks: '8' });
+        if (selectedCategory) params.set('category', selectedCategory);
+        if (selectedExercise) params.set('exercise_id', selectedExercise);
+        const res = await fetch(`/api/players/${id}/exercise-progress?${params}`);
+        if (res.ok) setProgressData(await res.json());
+      } catch (err) { console.error(err); }
+      setProgressLoading(false);
+    }
+    loadProgress();
+  }, [id, activeTab, selectedExercise, selectedCategory]);
 
   async function saveNotes() {
     setSaving(true);
@@ -119,6 +151,149 @@ export default function PlayerDetailPage() {
                 ))}
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'Progress' && (
+        <div className="space-y-4">
+          {progressLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading progress data...</div>
+          ) : !progressData ? (
+            <div className="text-center py-12 text-gray-400">No progress data available</div>
+          ) : (
+            <>
+              {/* Overall Weekly Stats */}
+              {progressData.overall_progress?.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-3">Weekly Overview</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={progressData.overall_progress}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="week" tickFormatter={w => { const d = new Date(w); return `${d.getMonth()+1}/${d.getDate()}`; }} fontSize={11} />
+                        <YAxis fontSize={11} />
+                        <Tooltip labelFormatter={w => `Week of ${w}`} />
+                        <Legend />
+                        <Bar dataKey="workouts" fill="#22c55e" name="Workouts" />
+                        <Bar dataKey="total_xp" fill="#a855f7" name="XP" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Volume Trend */}
+              {progressData.overall_progress?.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-3">Volume Trend</h3>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={progressData.overall_progress}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="week" tickFormatter={w => { const d = new Date(w); return `${d.getMonth()+1}/${d.getDate()}`; }} fontSize={11} />
+                        <YAxis fontSize={11} />
+                        <Tooltip labelFormatter={w => `Week of ${w}`} />
+                        <Line type="monotone" dataKey="total_volume" stroke="#3b82f6" strokeWidth={2} name="Total Volume" dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Category Breakdown */}
+              {progressData.category_progress?.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-3">Category Breakdown</h3>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <button onClick={() => setSelectedCategory('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!selectedCategory ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>All</button>
+                    {progressData.categories?.map(cat => (
+                      <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${selectedCategory === cat ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{cat.replace('_', ' ')}</button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                    {progressData.category_progress.map(cp => (
+                      <div key={cp.category} className="bg-gray-50 rounded-lg p-3 text-center">
+                        <div className="text-xs text-gray-500 capitalize">{cp.category.replace('_', ' ')}</div>
+                        <div className="font-bold text-gray-900">{cp.total_volume.toLocaleString()}</div>
+                        <div className="text-xs text-gray-400">{cp.total_sessions} sessions</div>
+                      </div>
+                    ))}
+                  </div>
+                  {progressData.category_progress.map(cp => cp.weekly?.length > 1 && (
+                    <div key={cp.category} className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 capitalize">{cp.category.replace('_', ' ')} — Weekly Volume</h4>
+                      <div className="h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={cp.weekly}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="week" tickFormatter={w => { const d = new Date(w); return `${d.getMonth()+1}/${d.getDate()}`; }} fontSize={10} />
+                            <YAxis fontSize={10} />
+                            <Tooltip />
+                            <Bar dataKey="total_volume" fill="#6366f1" name="Volume" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Individual Exercise Progress */}
+              {progressData.exercises?.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-3">Exercise Progress</h3>
+                  <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="w-full p-2 border rounded-lg mb-3 text-sm">
+                    <option value="">All exercises</option>
+                    {progressData.exercises.map(ex => (
+                      <option key={ex.id} value={ex.id}>{ex.name} ({ex.category})</option>
+                    ))}
+                  </select>
+                  {progressData.exercise_progress?.map(ep => (
+                    <div key={ep.exercise_id} className="mb-6 pb-4 border-b border-gray-100 last:border-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-800">{ep.exercise_name}</h4>
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs capitalize">{ep.category?.replace('_', ' ')}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        <div className="bg-gray-50 rounded p-2 text-center">
+                          <div className="text-xs text-gray-500">Sessions</div>
+                          <div className="font-bold text-sm">{ep.summary.total_sessions}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2 text-center">
+                          <div className="text-xs text-gray-500">Current</div>
+                          <div className="font-bold text-sm">{ep.summary.latest_weight ? `${ep.summary.latest_weight}kg` : `${ep.summary.latest_reps} reps`}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2 text-center">
+                          <div className="text-xs text-gray-500">Change</div>
+                          <div className={`font-bold text-sm ${ep.summary.weight_change > 0 ? 'text-green-600' : ep.summary.weight_change < 0 ? 'text-red-600' : ''}`}>
+                            {ep.summary.weight_change != null ? `${ep.summary.weight_change > 0 ? '+' : ''}${ep.summary.weight_change}kg` : '-'}
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2 text-center">
+                          <div className="text-xs text-gray-500">Best Vol</div>
+                          <div className="font-bold text-sm">{ep.summary.best_volume?.toLocaleString()}</div>
+                        </div>
+                      </div>
+                      {ep.data_points?.length > 1 && (
+                        <div className="h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={ep.data_points}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" tickFormatter={d => { const dt = new Date(d); return `${dt.getMonth()+1}/${dt.getDate()}`; }} fontSize={10} />
+                              <YAxis fontSize={10} />
+                              <Tooltip />
+                              {ep.summary.latest_weight && <Line type="monotone" dataKey="max_weight" stroke="#ef4444" strokeWidth={2} name="Weight (kg)" dot={{ r: 2 }} />}
+                              <Line type="monotone" dataKey="total_volume" stroke="#3b82f6" strokeWidth={2} name="Volume" dot={{ r: 2 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

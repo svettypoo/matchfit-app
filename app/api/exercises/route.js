@@ -9,6 +9,7 @@ export async function GET(request) {
     const difficulty = searchParams.get("difficulty");
     const search = searchParams.get("search");
     const coach_id = searchParams.get("coach_id");
+    const exercise_type = searchParams.get("exercise_type");
 
     let query = supabaseAdmin
       .from("mf_exercises")
@@ -25,6 +26,11 @@ export async function GET(request) {
     // Filter by difficulty
     if (difficulty) {
       query = query.eq("difficulty", difficulty);
+    }
+
+    // Filter by exercise type
+    if (exercise_type) {
+      query = query.eq("exercise_type", exercise_type);
     }
 
     // Search by name or description
@@ -77,6 +83,13 @@ export async function POST(request) {
       default_duration_sec,
       default_rest_sec,
       maturity_safe,
+      exercise_type,
+      tracking_fields,
+      default_weight_kg,
+      instructions,
+      tips,
+      primary_muscles,
+      secondary_muscles,
     } = body;
 
     if (!coach_id) {
@@ -122,6 +135,13 @@ export async function POST(request) {
         default_duration_sec: is_timed ? (default_duration_sec || 30) : null,
         default_rest_sec: default_rest_sec || 60,
         maturity_safe: maturity_safe || ["pre_phv", "phv", "post_phv"],
+        exercise_type: exercise_type || "independent",
+        tracking_fields: tracking_fields || [],
+        default_weight_kg: default_weight_kg || null,
+        instructions: instructions || null,
+        tips: tips || null,
+        primary_muscles: primary_muscles || [],
+        secondary_muscles: secondary_muscles || [],
       })
       .select()
       .single();
