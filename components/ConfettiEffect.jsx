@@ -42,4 +42,5 @@ export default function ConfettiEffect({ trigger = true }) {
         />
       ))}
     </div>
-  
+  );
+}

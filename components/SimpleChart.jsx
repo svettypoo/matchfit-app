@@ -92,3 +92,34 @@ export function CircularProgress({ value, max = 100, size = 80, color = '#22c55e
     </div>
   );
 }
+
+// Default export wrapper — accepts { data: [{label, value}], type: 'bar'|'line', color, maxValue }
+export default function SimpleChart({ data = [], type = 'bar', color = '#22c55e', maxValue }) {
+  const values = data.map(d => d.value);
+  const labels = data.map(d => d.label);
+
+  if (type === 'line') {
+    return <LineChart data={values} labels={labels} color={color} />;
+  }
+
+  // Bar chart — use inline color style instead of Tailwind class
+  const max = maxValue || Math.max(...values, 1);
+  return (
+    <div className="flex items-end gap-1" style={{ height: 120 }}>
+      {values.map((val, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <span className="text-[10px] text-gray-500 font-medium">{Math.round(val)}</span>
+          <div
+            className="w-full rounded-t transition-all duration-300"
+            style={{
+              height: `${(val / max) * 100}%`,
+              minHeight: val > 0 ? 4 : 0,
+              backgroundColor: color,
+            }}
+          />
+          <span className="text-[10px] text-gray-400">{labels[i]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}

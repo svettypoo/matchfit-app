@@ -50,4 +50,10 @@ export default function PlayerRow({ player, onClick }) {
   if (player.id) {
     return (
       <Link href={`/admin/players/${player.id}`} className="contents">
-        {c
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+}

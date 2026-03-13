@@ -1,1 +1,35 @@
-node_modules/\n.next/\n.env.local\n.env.*\n*.png\nschema.sql\nsetup-db.js
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# local env files
+.env*.local
+.env.local
+.env.production
+
+# vercel
+.vercel
+
+# project specific
+schema.sql
+setup-db.js
+*.png
+screenshot.png

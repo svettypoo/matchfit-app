@@ -155,7 +155,8 @@ export default function DashboardPage() {
 
       {showWellness && (
         <WellnessModal
-          onClose={() => setShowWellness(false)}
+          playerId={JSON.parse(localStorage.getItem('mf_user') || '{}').id}
+          onClose={() => { setShowWellness(false); }}
           onComplete={() => { setWellnessDone(true); setShowWellness(false); }}
         />
       )}

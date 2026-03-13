@@ -26,4 +26,17 @@ export default function BadgeCard({ badge, earned: earnedProp, earnedAt }) {
       <p className="text-xs text-gray-500 mt-1">{badge?.description}</p>
       {isEarned && dateEarned && (
         <p className="text-xs text-green-600 mt-2 font-medium">
-          Earned {new Date(dateEarned).toLocaleDateStri
+          Earned {new Date(dateEarned).toLocaleDateString()}
+        </p>
+      )}
+      {!isEarned && badge?.requirement && (
+        <p className="text-xs text-gray-400 mt-2">{badge.requirement}</p>
+      )}
+      {badge?.xp_reward && (
+        <div className="mt-2 text-xs font-medium text-amber-600">
+          +{badge.xp_reward} XP
+        </div>
+      )}
+    </div>
+  );
+}
