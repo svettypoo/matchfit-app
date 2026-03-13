@@ -6,10 +6,10 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
 
-    // Get full player profile
+    // Get full player profile with team name
     const { data: player, error } = await supabaseAdmin
       .from("mf_players")
-      .select("*")
+      .select("*, mf_teams(name)")
       .eq("id", id)
       .single();
 
@@ -51,6 +51,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({
       ...player,
+      team_name: player.mf_teams?.name || null,
       badges: badges?.map((pb) => ({
         ...pb.mf_badges,
         earned_at: pb.earned_at,

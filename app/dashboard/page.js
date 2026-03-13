@@ -117,8 +117,8 @@ export default function DashboardPage() {
         {/* Today's Workout */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Today's Workout</h2>
-          {todayWorkout ? (
-            <WorkoutCard workout={todayWorkout} />
+          {todayWorkout && !todayWorkout.rest_day && todayWorkout.workout ? (
+            <WorkoutCard workout={todayWorkout.workout} />
           ) : (
             <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-green-200">
               <svg className="w-10 h-10 mx-auto mb-2 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>

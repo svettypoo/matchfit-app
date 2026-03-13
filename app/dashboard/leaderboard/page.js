@@ -24,11 +24,14 @@ export default function LeaderboardPage() {
     async function load() {
       setLoading(true);
       const user = JSON.parse(localStorage.getItem('mf_user') || '{}');
+      const profile = JSON.parse(localStorage.getItem('mf_profile') || '{}');
+      const teamId = profile.team_id || user.team_id;
+      if (!teamId) { setLoading(false); return; }
       try {
-        const res = await fetch(`/api/leaderboard?metric=${metric}&period=${period}&player_id=${user.id}`);
+        const res = await fetch(`/api/leaderboard?metric=${metric}&period=${period}&team_id=${teamId}`);
         if (res.ok) {
           const data = await res.json();
-          setPlayers(data.players || []);
+          setPlayers(data.leaderboard || data.players || []);
         }
       } catch (err) {
         console.error(err);
@@ -92,9 +95,9 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           players.map((player, i) => {
-            const isCurrent = player.id === currentUserId;
+            const isCurrent = (player.player_id || player.id) === currentUserId;
             return (
-              <div key={player.id || i}
+              <div key={player.player_id || player.id || i}
                 className={`bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm transition-all ${
                   isCurrent ? 'ring-2 ring-green-500 bg-green-50' : 'border border-gray-100'
                 }`}>
@@ -116,9 +119,9 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-gray-900">
-                    {metric === 'xp' ? player.xp?.toLocaleString() :
-                     metric === 'streak' ? `${player.streak}d` :
-                     `${player.compliance}%`}
+                    {metric === 'xp' ? (player.value ?? player.xp ?? 0).toLocaleString() :
+                     metric === 'streak' ? `${player.value ?? player.streak ?? 0}d` :
+                     `${player.value ?? player.compliance ?? 0}%`}
                   </div>
                   {player.trend && (
                     <span className={`text-xs ${player.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
