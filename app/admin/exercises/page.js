@@ -18,6 +18,17 @@ const CAT_COLORS = {
   plyometrics: 'bg-orange-100 text-orange-700', recovery: 'bg-teal-100 text-teal-700',
 };
 
+const CAT_IMAGES = {
+  strength: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=400&fit=crop',
+  speed: 'https://images.unsplash.com/photo-1461896836934-bd45ba8a0a05?w=400&h=400&fit=crop',
+  agility: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=400&fit=crop',
+  ball_work: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=400&h=400&fit=crop',
+  flexibility: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop',
+  core: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop',
+  plyometrics: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=400&h=400&fit=crop',
+  recovery: 'https://images.unsplash.com/photo-1600881333168-2ef49b341f30?w=400&h=400&fit=crop',
+};
+
 const DIFF_COLORS = {
   beginner: 'text-green-600 bg-green-50', intermediate: 'text-amber-600 bg-amber-50', advanced: 'text-red-600 bg-red-50',
 };
@@ -208,52 +219,55 @@ export default function AdminExercises() {
           <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or search terms</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {filtered.map(ex => {
             const ytId = parseYouTubeId(ex.video_url);
+            const fallbackImg = CAT_IMAGES[ex.category] || CAT_IMAGES.strength;
             return (
-              <div key={ex.id} className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+              <div key={ex.id} className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer group aspect-square flex flex-col"
                 onClick={() => setDetailExercise(ex)}>
-                {/* Video/Image thumbnail */}
-                {ytId ? (
-                  <div className="relative h-36 bg-gray-900">
-                    <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="" className="w-full h-full object-cover opacity-90" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <svg className="w-5 h-5 text-red-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                {/* Image area ~60% */}
+                <div className="relative flex-[3] min-h-0 bg-gray-100">
+                  {ytId ? (
+                    <>
+                      <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <svg className="w-4 h-4 text-red-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                        </div>
                       </div>
-                    </div>
-                    <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">Video</div>
-                  </div>
-                ) : ex.image_url ? (
-                  <div className="h-36 bg-gray-100">
+                    </>
+                  ) : ex.image_url ? (
                     <img src={ex.image_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={fallbackImg} alt="" className="w-full h-full object-cover" />
+                  )}
+                  {/* Category icon overlay */}
+                  <div className="absolute top-1.5 left-1.5 w-7 h-7 rounded-lg bg-black/40 backdrop-blur-sm flex items-center justify-center text-sm">
+                    {CAT_ICONS[ex.category] || '🏋️'}
                   </div>
-                ) : (
-                  <div className="h-20 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                    <span className="text-3xl">{CAT_ICONS[ex.category] || '🏋️'}</span>
+                  {ytId && <div className="absolute top-1.5 right-1.5 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">VIDEO</div>}
+                </div>
+                {/* Info area ~40% */}
+                <div className="flex-[2] p-2 flex flex-col justify-between min-h-0">
+                  <div>
+                    <h3 className="font-semibold text-gray-800 text-xs leading-tight truncate">{ex.name}</h3>
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${CAT_COLORS[ex.category] || 'bg-gray-100 text-gray-600'}`}>
+                        {ex.category?.replace('_', ' ')}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${DIFF_COLORS[ex.difficulty] || ''}`}>{ex.difficulty}</span>
+                    </div>
                   </div>
-                )}
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-gray-800 leading-tight">{ex.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ml-2 ${CAT_COLORS[ex.category] || 'bg-gray-100 text-gray-600'}`}>
-                      {ex.category?.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{ex.description}</p>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {(ex.primary_muscles || []).slice(0, 3).map(mg => <span key={mg} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-medium">{mg}</span>)}
-                    {(ex.secondary_muscles || []).slice(0, 2).map(mg => <span key={mg} className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px]">{mg}</span>)}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className={`px-1.5 py-0.5 rounded font-medium ${DIFF_COLORS[ex.difficulty] || ''}`}>{ex.difficulty}</span>
-                    <span>{ex.is_timed ? `${ex.default_duration_sec}s` : `${ex.default_sets}×${ex.default_reps}`}</span>
-                    {ex.default_weight_kg > 0 && <span>{ex.default_weight_kg}kg</span>}
-                    <span>{ex.default_rest_sec}s rest</span>
-                    {ex.exercise_type !== 'independent' && (
-                      <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium">{ex.exercise_type}</span>
-                    )}
+                  <div>
+                    <div className="flex flex-wrap gap-0.5 mb-1">
+                      {(ex.primary_muscles || []).slice(0, 2).map(mg => <span key={mg} className="px-1 py-0 bg-red-50 text-red-600 rounded text-[9px] font-medium">{mg}</span>)}
+                      {(ex.secondary_muscles || []).slice(0, 1).map(mg => <span key={mg} className="px-1 py-0 bg-gray-100 text-gray-500 rounded text-[9px]">{mg}</span>)}
+                    </div>
+                    <p className="text-[10px] text-gray-500">
+                      {ex.is_timed ? `${ex.default_duration_sec}s` : `${ex.default_sets}×${ex.default_reps}`}
+                      {ex.default_weight_kg > 0 && ` · ${ex.default_weight_kg}kg`}
+                    </p>
                   </div>
                 </div>
               </div>
