@@ -102,7 +102,7 @@ export default function CoachMessagesPage() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="text-center py-8"><div className="animate-spin text-2xl">&#9917;</div></div>
+            <div className="text-center py-8"><svg className="animate-spin h-6 w-6 text-green-600 mx-auto" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
           ) : players.length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-8">No players</p>
           ) : (
@@ -132,7 +132,7 @@ export default function CoachMessagesPage() {
         {!selectedPlayer ? (
           <div className="flex-1 flex items-center justify-center text-center p-8">
             <div>
-              <div className="text-5xl mb-3">&#128172;</div>
+              <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg>
               <h3 className="font-semibold text-gray-900 mb-1">Select a player</h3>
               <p className="text-gray-500 text-sm">Choose a player from the list to start messaging</p>
             </div>

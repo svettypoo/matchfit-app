@@ -57,7 +57,7 @@ export default function JoinPage() {
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">&#9917;</div>
+          <svg className="w-12 h-12 mx-auto mb-3 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>
           <h1 className="text-3xl font-bold text-gray-900">Join a Team</h1>
           <p className="text-gray-500 mt-1">Enter your 6-character team code</p>
         </div>
@@ -95,7 +95,7 @@ export default function JoinPage() {
           <div className="bg-white rounded-2xl shadow-lg p-8 animate-slide-up">
             {/* Team Info */}
             <div className="text-center mb-6 p-4 bg-green-50 rounded-xl border border-green-200">
-              <div className="text-2xl mb-1">&#127942;</div>
+              <svg className="w-6 h-6 text-green-600 mx-auto mb-1" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .982-3.172M8.25 8.75a4.875 4.875 0 0 1 7.5 0M12 3v1.5" /></svg>
               <h3 className="font-bold text-green-800 text-lg">{team.team_name}</h3>
               <p className="text-green-600 text-sm">Coach: {team.coach_name}</p>
             </div>

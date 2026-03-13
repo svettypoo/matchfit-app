@@ -43,7 +43,7 @@ export default function WellnessDashboardPage() {
       {alertPlayers.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">&#9888;&#65039;</span>
+            <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
             <h3 className="font-semibold text-red-800">{alertPlayers.length} player{alertPlayers.length > 1 ? 's' : ''} need attention</h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -79,7 +79,7 @@ export default function WellnessDashboardPage() {
 
       {/* Player Grid */}
       {loading ? (
-        <div className="text-center py-12"><div className="animate-spin text-3xl">&#9917;</div></div>
+        <div className="text-center py-12"><svg className="animate-spin h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {players.map(player => {

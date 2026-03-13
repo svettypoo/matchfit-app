@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import ConfettiEffect from '../../../../components/ConfettiEffect';
 
-const RPE_FACES = ['&#128564;', '&#128578;', '&#128515;', '&#128556;', '&#128548;', '&#128553;', '&#128555;', '&#128561;', '&#129327;', '&#129396;'];
+// RPE 1-10 descriptive labels instead of emoji faces
+const RPE_LABELS = ['Rest', 'Very Light', 'Light', 'Moderate', 'Somewhat Hard', 'Hard', 'Harder', 'Very Hard', 'Max Effort', 'Absolute Max'];
 
 export default function WorkoutExecutionPage() {
   const router = useRouter();
@@ -121,7 +122,7 @@ export default function WorkoutExecutionPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin text-4xl">&#9917;</div>
+        <svg className="animate-spin h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
       </div>
     );
   }
@@ -131,7 +132,7 @@ export default function WorkoutExecutionPage() {
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4 relative overflow-hidden">
         <ConfettiEffect />
         <div className="text-center animate-bounce-in relative z-10">
-          <div className="text-7xl mb-4">&#127881;</div>
+          <svg className="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Workout Complete!</h1>
           <p className="text-gray-500 mb-6">Duration: {formatTime(elapsed)}</p>
 
@@ -274,7 +275,7 @@ export default function WorkoutExecutionPage() {
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-gray-700">How hard was it? (RPE)</span>
-            <span className="text-lg" dangerouslySetInnerHTML={{ __html: RPE_FACES[rpe - 1] }} />
+            <span className="text-sm font-medium text-green-700">{RPE_LABELS[rpe - 1]}</span>
           </div>
           <input type="range" min="1" max="10" value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
             className="w-full accent-green-600" />

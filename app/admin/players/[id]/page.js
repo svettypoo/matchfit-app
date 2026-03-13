@@ -43,7 +43,7 @@ export default function PlayerDetailPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><div className="animate-spin text-4xl">&#9917;</div></div>;
+    return <div className="flex items-center justify-center py-20"><svg className="animate-spin h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
   }
 
   const stats = player?.stats || {};
@@ -94,13 +94,13 @@ export default function PlayerDetailPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Level', value: stats.level || 1, icon: '&#11088;' },
-              { label: 'XP', value: stats.xp || 0, icon: '&#128171;' },
-              { label: 'Streak', value: `${stats.streak || 0}d`, icon: '&#128293;' },
-              { label: 'Compliance', value: `${stats.compliance || 0}%`, icon: '&#128200;' },
+              { label: 'Level', value: stats.level || 1, icon: <svg className="w-6 h-6 text-yellow-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg> },
+              { label: 'XP', value: stats.xp || 0, icon: <svg className="w-6 h-6 text-purple-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg> },
+              { label: 'Streak', value: `${stats.streak || 0}d`, icon: <svg className="w-6 h-6 text-orange-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" /></svg> },
+              { label: 'Compliance', value: `${stats.compliance || 0}%`, icon: <svg className="w-6 h-6 text-blue-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg> },
             ].map(s => (
               <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-                <div dangerouslySetInnerHTML={{ __html: s.icon }} />
+                {s.icon}
                 <div className="font-bold text-gray-900 mt-1">{s.value}</div>
                 <div className="text-xs text-gray-500">{s.label}</div>
               </div>
@@ -114,7 +114,7 @@ export default function PlayerDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {player.badges.map((b, i) => (
                   <div key={i} className="w-12 h-12 bg-yellow-50 rounded-lg flex items-center justify-center text-2xl border border-yellow-200">
-                    {b.icon || '&#127942;'}
+                    {b.icon || <svg className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .982-3.172M8.25 8.75a4.875 4.875 0 0 1 7.5 0M12 3v1.5" /></svg>}
                   </div>
                 ))}
               </div>
@@ -176,7 +176,7 @@ export default function PlayerDetailPage() {
 
       {activeTab === 'Messages' && (
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center py-12">
-          <div className="text-4xl mb-2">&#128172;</div>
+          <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg>
           <p className="text-gray-500">Conversation with {player?.name}</p>
           <p className="text-sm text-gray-400">Use the Messages page for full chat</p>
         </div>
@@ -200,7 +200,7 @@ export default function PlayerDetailPage() {
 
       {activeTab === 'Calendar' && (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center">
-          <div className="text-4xl mb-2">&#128197;</div>
+          <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
           <p className="text-gray-500">Player calendar view</p>
           <p className="text-sm text-gray-400 mt-1">Workout completion history shown here</p>
         </div>

@@ -13,13 +13,21 @@ const TANNER_DESC = [
   'Fully mature',
 ];
 const BODY_PARTS = ['Ankle', 'Knee', 'Hip', 'Hamstring', 'Quad', 'Groin', 'Back', 'Shoulder', 'Wrist', 'ACL'];
+const GOAL_ICONS = {
+  speed: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg>,
+  strength: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" /></svg>,
+  endurance: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>,
+  agility: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>,
+  recovery: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>,
+  overall: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>,
+};
 const GOALS = [
-  { id: 'speed', icon: '&#9889;', label: 'Get Faster' },
-  { id: 'strength', icon: '&#128170;', label: 'Build Strength' },
-  { id: 'endurance', icon: '&#128168;', label: 'Boost Endurance' },
-  { id: 'agility', icon: '&#127939;', label: 'Improve Agility' },
-  { id: 'recovery', icon: '&#128154;', label: 'Better Recovery' },
-  { id: 'overall', icon: '&#9917;', label: 'Overall Fitness' },
+  { id: 'speed', label: 'Get Faster' },
+  { id: 'strength', label: 'Build Strength' },
+  { id: 'endurance', label: 'Boost Endurance' },
+  { id: 'agility', label: 'Improve Agility' },
+  { id: 'recovery', label: 'Better Recovery' },
+  { id: 'overall', label: 'Overall Fitness' },
 ];
 const MOTIVATIONS = ['Make the team', 'Get a scholarship', 'Stay healthy', 'Improve performance', 'Have fun'];
 
@@ -71,7 +79,7 @@ export default function OnboardingPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center">
         <div className="text-center animate-bounce-in">
-          <div className="text-7xl mb-6 animate-spin" style={{ animationDuration: '2s' }}>&#9917;</div>
+          <svg className="animate-spin h-16 w-16 text-green-600 mx-auto mb-6" style={{ animationDuration: '2s' }} viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Creating Your Personalized Program</h2>
           <p className="text-gray-500">Analyzing your profile and building the perfect training plan...</p>
           <div className="mt-6 flex justify-center gap-1">
@@ -309,15 +317,15 @@ export default function OnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { id: 'morning', label: 'Morning', icon: '&#127749;' },
-                    { id: 'afternoon', label: 'Afternoon', icon: '&#9728;&#65039;' },
-                    { id: 'evening', label: 'Evening', icon: '&#127769;' },
+                    { id: 'morning', label: 'Morning', icon: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" /></svg> },
+                    { id: 'afternoon', label: 'Afternoon', icon: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" /></svg> },
+                    { id: 'evening', label: 'Evening', icon: <svg className="w-7 h-7 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" /></svg> },
                   ].map(t => (
                     <button key={t.id} onClick={() => update('preferred_time', t.id)}
                       className={`p-4 rounded-xl text-center transition-all border-2 ${
                         data.preferred_time === t.id ? 'border-green-500 bg-green-50' : 'border-gray-200'
                       }`}>
-                      <div className="text-2xl mb-1" dangerouslySetInnerHTML={{ __html: t.icon }} />
+                      <div className="mb-1">{t.icon}</div>
                       <div className="text-sm font-medium">{t.label}</div>
                     </button>
                   ))}
@@ -358,7 +366,7 @@ export default function OnboardingPage() {
                       className={`p-4 rounded-xl text-center transition-all border-2 ${
                         data.primary_goal === g.id ? 'border-green-500 bg-green-50' : 'border-gray-200'
                       }`}>
-                      <div className="text-2xl mb-1" dangerouslySetInnerHTML={{ __html: g.icon }} />
+                      <div className="mb-1">{GOAL_ICONS[g.id]}</div>
                       <div className="text-sm font-medium">{g.label}</div>
                     </button>
                   ))}

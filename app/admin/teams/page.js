@@ -71,10 +71,10 @@ export default function TeamsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12"><div className="animate-spin text-3xl">&#9917;</div></div>
+        <div className="text-center py-12"><svg className="animate-spin h-8 w-8 text-green-600 mx-auto" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
       ) : teams.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <div className="text-5xl mb-3">&#128101;</div>
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">No teams yet</h3>
           <p className="text-gray-500 text-sm mb-4">Create your first team to get started</p>
           <button onClick={() => setShowCreate(true)}
@@ -92,7 +92,7 @@ export default function TeamsPage() {
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{team.age_group || 'All ages'}</span>
               </div>
               <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>&#128101; {team.player_count || 0} players</span>
+                <span className="flex items-center gap-1"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>{team.player_count || 0} players</span>
               </div>
               {team.season_start && (
                 <div className="text-xs text-gray-400 mt-2">
