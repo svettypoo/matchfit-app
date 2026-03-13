@@ -36,7 +36,9 @@ export async function POST(request) {
     if (coach) {
       return NextResponse.json({
         user: {
-          id: authUser.id,
+          id: coach.id,
+          auth_id: authUser.id,
+          name: coach.name,
           email: authUser.email,
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
@@ -56,7 +58,9 @@ export async function POST(request) {
     if (player) {
       return NextResponse.json({
         user: {
-          id: authUser.id,
+          id: player.id,
+          auth_id: authUser.id,
+          name: player.name,
           email: authUser.email,
           access_token: authData.session?.access_token,
           refresh_token: authData.session?.refresh_token,
