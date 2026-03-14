@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function JoinPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [code, setCode] = useState('');
   const [team, setTeam] = useState(null);
   const [error, setError] = useState('');
@@ -16,7 +15,8 @@ export default function JoinPage() {
 
   // Auto-fill code from email link (?code=XXXXXX)
   useEffect(() => {
-    const urlCode = searchParams.get('code');
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = params.get('code');
     if (urlCode && urlCode.length >= 6) {
       const c = urlCode.slice(0, 6).toUpperCase();
       setCode(c);
@@ -34,7 +34,7 @@ export default function JoinPage() {
         setLoading(false);
       })();
     }
-  }, [searchParams]);
+  }, []);
 
   async function validateCode() {
     if (code.length !== 6) return;
