@@ -16,7 +16,11 @@ const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: fa
 const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
 const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 
-const TABS = ['Overview', 'Plan History', 'Progress', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
+const TABS = ['Overview', 'AI Insights', 'Plan History', 'Progress', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
+
+const RISK_COLORS = { high: 'bg-red-100 text-red-700 border-red-200', medium: 'bg-amber-100 text-amber-700 border-amber-200', low: 'bg-blue-100 text-blue-700 border-blue-200' };
+const REC_COLORS = { increase_weight: 'bg-green-100 text-green-700', increase_reps: 'bg-blue-100 text-blue-700', maintain: 'bg-gray-100 text-gray-700', deload: 'bg-amber-100 text-amber-700', review: 'bg-red-100 text-red-700' };
+const REC_LABELS = { increase_weight: 'Increase Weight', increase_reps: 'Increase Reps', maintain: 'Maintain', deload: 'Deload', review: 'Review' };
 
 export default function PlayerDetailPage() {
   const { id } = useParams();
@@ -33,6 +37,9 @@ export default function PlayerDetailPage() {
   const [planHistory, setPlanHistory] = useState(null);
   const [planHistoryLoading, setPlanHistoryLoading] = useState(false);
   const [expandedPlanDay, setExpandedPlanDay] = useState(null);
+  const [aiInsights, setAiInsights] = useState(null);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [injuryRisk, setInjuryRisk] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -46,6 +53,37 @@ export default function PlayerDetailPage() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== 'AI Insights') return;
+    async function loadAIInsights() {
+      setAiInsightsLoading(true);
+      try {
+        const [progRes, planRes] = await Promise.all([
+          fetch('/api/ai/auto-progression', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: id }) }),
+          fetch(`/api/players/${id}/plan-history`),
+        ]);
+        if (progRes.ok) setAiInsights(await progRes.json());
+        if (planRes.ok) {
+          const ph = await planRes.json();
+          // Extract AI summaries from plan history days
+          setPlanHistory(ph);
+        }
+        // Load injury risk for this player's coach
+        const user = JSON.parse(localStorage.getItem('mf_user') || 'null');
+        if (user) {
+          const riskRes = await fetch(`/api/ai/injury-risk?coach_id=${user.id}`);
+          if (riskRes.ok) {
+            const riskData = await riskRes.json();
+            const playerRisk = riskData.alerts?.find(a => a.player_id === id);
+            setInjuryRisk(playerRisk || null);
+          }
+        }
+      } catch (err) { console.error(err); }
+      setAiInsightsLoading(false);
+    }
+    loadAIInsights();
+  }, [id, activeTab]);
 
   useEffect(() => {
     if (activeTab !== 'Plan History') return;
@@ -171,6 +209,148 @@ export default function PlayerDetailPage() {
         </div>
       )}
 
+      {/* ============ AI INSIGHTS TAB ============ */}
+      {activeTab === 'AI Insights' && (
+        <div className="space-y-4">
+          {aiInsightsLoading ? (
+            <div className="text-center py-12 text-gray-400">Analyzing player data...</div>
+          ) : (
+            <>
+              {/* Injury Risk Alert */}
+              {injuryRisk && (
+                <div className={`rounded-xl p-4 border-2 ${RISK_COLORS[injuryRisk.risk_level]}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <span className="font-bold text-sm uppercase">{injuryRisk.risk_level} Injury Risk</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {injuryRisk.alerts.map((alert, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.severity === 'high' ? 'bg-red-500' : alert.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-400'}`} />
+                        <span>{alert.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Overall Readiness */}
+              {aiInsights && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">AI Progression Analysis</h3>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      aiInsights.readiness === 'ready_to_progress' ? 'bg-green-100 text-green-700' :
+                      aiInsights.readiness === 'fatigued' ? 'bg-red-100 text-red-700' :
+                      aiInsights.readiness === 'inconsistent' ? 'bg-amber-100 text-amber-700' :
+                      aiInsights.readiness === 'insufficient_data' ? 'bg-gray-100 text-gray-600' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {aiInsights.readiness === 'ready_to_progress' ? 'Ready to Progress' :
+                       aiInsights.readiness === 'fatigued' ? 'Fatigued' :
+                       aiInsights.readiness === 'inconsistent' ? 'Inconsistent' :
+                       aiInsights.readiness === 'insufficient_data' ? 'Needs More Data' : 'Good'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{aiInsights.summary}</p>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-gray-900">{aiInsights.total_sessions || 0}</div>
+                      <div className="text-[10px] text-gray-500">Sessions</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-gray-900">{aiInsights.overall_rpe || '—'}</div>
+                      <div className="text-[10px] text-gray-500">Avg RPE</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <div className="text-xl font-bold text-gray-900">{aiInsights.skip_rate || 0}%</div>
+                      <div className="text-[10px] text-gray-500">Skip Rate</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Exercise Recommendations */}
+              {aiInsights?.recommendations?.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-4 border-b bg-gray-50">
+                    <h3 className="font-semibold text-gray-700">Exercise Recommendations</h3>
+                  </div>
+                  <div className="divide-y">
+                    {aiInsights.recommendations.map((rec, i) => (
+                      <div key={i} className="px-4 py-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm text-gray-900">{rec.exercise_name}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${REC_COLORS[rec.recommendation] || 'bg-gray-100 text-gray-600'}`}>
+                            {REC_LABELS[rec.recommendation] || rec.recommendation}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1.5">{rec.reasoning}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                          {rec.current_weight && <span>Current: {rec.current_weight}kg</span>}
+                          {rec.suggested_weight && rec.suggested_weight !== rec.current_weight && (
+                            <span className="text-green-600 font-medium">Suggested: {rec.suggested_weight}kg</span>
+                          )}
+                          {rec.latest_rpe && <span>RPE: {rec.latest_rpe}</span>}
+                          <span>{rec.sessions} sessions</span>
+                          {rec.weight_change_pct && parseFloat(rec.weight_change_pct) !== 0 && (
+                            <span className={parseFloat(rec.weight_change_pct) > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {parseFloat(rec.weight_change_pct) > 0 ? '+' : ''}{rec.weight_change_pct}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent AI Session Summaries */}
+              {planHistory && (planHistory.days || []).filter(d => d.ai_summary).length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-4 border-b bg-gray-50">
+                    <h3 className="font-semibold text-gray-700">AI Session Summaries</h3>
+                  </div>
+                  <div className="divide-y max-h-[40vh] overflow-y-auto">
+                    {(planHistory.days || []).filter(d => d.ai_summary).map(day => (
+                      <div key={day.id} className="px-4 py-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm text-gray-800">{day.name}</span>
+                          <div className="flex items-center gap-2">
+                            {day.overall_rpe && <span className="text-[10px] text-gray-400">RPE {day.overall_rpe}</span>}
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              day.performance_rating === 'exceeded' ? 'bg-green-100 text-green-700' :
+                              day.performance_rating === 'below' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                            }`}>{day.performance_rating || 'met'}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed">{day.ai_summary}</p>
+                        <div className="text-[10px] text-gray-400 mt-1">
+                          {day.completed_at ? new Date(day.completed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No data state */}
+              {!aiInsights && !injuryRisk && (
+                <div className="text-center py-12">
+                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+                  </svg>
+                  <p className="text-gray-500">Not enough data for AI insights yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Player needs at least 5 completed sessions</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* ============ PLAN HISTORY TAB ============ */}
       {activeTab === 'Plan History' && (
         <div className="space-y-4">
@@ -248,6 +428,7 @@ export default function PlayerDetailPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
+                            {day.overall_rpe && <span className="text-[10px] text-gray-400">RPE {day.overall_rpe}</span>}
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ratingBg}`}>
                               {day.performance_rating || 'met'}
                             </span>
@@ -318,6 +499,18 @@ export default function PlayerDetailPage() {
                                 );
                               })}
                             </div>
+                            {/* AI Summary for this day */}
+                            {day.ai_summary && (
+                              <div className="px-4 py-2 bg-indigo-50 border-t border-indigo-100">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <svg className="w-3 h-3 text-indigo-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                                  </svg>
+                                  <span className="text-[9px] font-semibold text-indigo-700 uppercase">AI Summary</span>
+                                </div>
+                                <p className="text-[11px] text-indigo-800 leading-relaxed">{day.ai_summary}</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

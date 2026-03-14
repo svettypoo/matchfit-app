@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     const { data: days, error } = await supabase
       .from('mf_plan_days')
       .select(`
-        id, plan_id, day_number, name, focus, status, completed_at, performance_rating,
+        id, plan_id, day_number, name, focus, status, completed_at, performance_rating, ai_summary, overall_rpe,
         mf_plan_exercises (
           id, exercise_id, sets, reps, weight_kg, duration_sec, rest_sec, rpe_target, notes, sort_order,
           actual_sets, actual_reps, actual_weight, actual_rpe, completed, completed_at, player_notes,

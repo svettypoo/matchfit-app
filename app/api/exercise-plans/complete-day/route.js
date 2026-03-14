@@ -4,12 +4,17 @@ import { getSupabaseAdmin } from '@/lib/supabase-server';
 const supabase = getSupabaseAdmin();
 
 /**
- * POST — Complete a plan day, evaluate performance, adjust future intensity
- * Body: { day_id, exercises: [{ exercise_id, actual_sets, actual_reps, actual_weight, actual_rpe, player_notes }] }
+ * POST — Complete a plan day, evaluate performance, adjust future intensity, generate AI summary
+ * Body: {
+ *   day_id,
+ *   exercises: [{ exercise_id, plan_exercise_id, actual_sets, actual_reps, actual_weight, actual_rpe, player_notes }],
+ *   overall_rpe,      // 1-10 player overall effort rating
+ *   player_rating,    // 'exceeded' | 'met' | 'below' — player's self-assessment
+ * }
  */
 export async function POST(request) {
   try {
-    const { day_id, exercises, overall_rpe } = await request.json();
+    const { day_id, exercises, overall_rpe, player_rating } = await request.json();
     if (!day_id) return NextResponse.json({ error: 'day_id required' }, { status: 400 });
 
     // Get the day and its plan
@@ -41,8 +46,8 @@ export async function POST(request) {
           actual_reps: actualRepsArr,
           actual_weight: actualWeightArr.length > 0 ? actualWeightArr : null,
           actual_rpe: ex.actual_rpe || overall_rpe || null,
-          completed: true,
-          completed_at: new Date().toISOString(),
+          completed: actualSets > 0,
+          completed_at: actualSets > 0 ? new Date().toISOString() : null,
           player_notes: ex.player_notes || null,
         })
         .eq('id', planEx.id);
@@ -52,12 +57,12 @@ export async function POST(request) {
       const actualVolume = actualRepsArr.reduce((sum, r) => sum + (r || 0), 0);
       totalPrescribed += prescribedVolume;
       totalActual += actualVolume;
-      exerciseCount++;
+      if (actualSets > 0) exerciseCount++;
     }
 
-    // Determine performance rating
-    let performanceRating = 'met';
-    if (exerciseCount > 0 && totalPrescribed > 0) {
+    // Determine performance rating — use player's self-assessment if provided, otherwise calculate
+    let performanceRating = player_rating || 'met';
+    if (!player_rating && exerciseCount > 0 && totalPrescribed > 0) {
       const ratio = totalActual / totalPrescribed;
       if (ratio < 0.85) performanceRating = 'below';
       else if (ratio > 1.1) performanceRating = 'exceeded';
@@ -70,6 +75,7 @@ export async function POST(request) {
         status: 'completed',
         completed_at: new Date().toISOString(),
         performance_rating: performanceRating,
+        overall_rpe: overall_rpe || null,
       })
       .eq('id', day_id);
 
@@ -84,7 +90,7 @@ export async function POST(request) {
         .eq('status', 'completed');
 
       const ratings = (completedDays || []).map(d => d.performance_rating);
-      const recentRatings = ratings.slice(-3); // Last 3 workouts
+      const recentRatings = ratings.slice(-3);
 
       let trend = 'meeting';
       let intensityMultiplier = parseFloat(plan.intensity_multiplier) || 1.0;
@@ -94,10 +100,10 @@ export async function POST(request) {
 
       if (exceededCount >= 2) {
         trend = 'exceeding';
-        intensityMultiplier = Math.min(1.5, intensityMultiplier + 0.05); // 5% increase
+        intensityMultiplier = Math.min(1.5, intensityMultiplier + 0.05);
       } else if (belowCount >= 2) {
         trend = 'below';
-        intensityMultiplier = Math.max(0.7, intensityMultiplier - 0.05); // 5% decrease
+        intensityMultiplier = Math.max(0.7, intensityMultiplier - 0.05);
       }
 
       await supabase
@@ -110,7 +116,7 @@ export async function POST(request) {
         })
         .eq('id', plan.id);
 
-      // Generate next day if there are upcoming days
+      // Unlock next day and adjust intensity
       const { data: nextDay } = await supabase
         .from('mf_plan_days')
         .select('id, status')
@@ -121,7 +127,6 @@ export async function POST(request) {
         .maybeSingle();
 
       if (nextDay) {
-        // Make the next day available and adjust its exercises based on intensity
         await supabase
           .from('mf_plan_days')
           .update({ status: 'available' })
@@ -135,7 +140,6 @@ export async function POST(request) {
             .eq('plan_day_id', nextDay.id);
 
           for (const fex of (futureExercises || [])) {
-            // Find the same exercise from the just-completed day
             const prevEx = day.mf_plan_exercises?.find(pe => pe.exercise_id === fex.exercise_id);
 
             let newReps = fex.reps;
@@ -143,14 +147,12 @@ export async function POST(request) {
             let newSets = fex.sets;
 
             if (trend === 'exceeding') {
-              // Progressive overload: increase reps by 1-2 or weight by 2.5%
               if (newWeight) {
-                newWeight = Math.round((newWeight * 1.025) * 2) / 2; // Round to 0.5kg
+                newWeight = Math.round((newWeight * 1.025) * 2) / 2;
               } else {
                 newReps = Math.min(20, (newReps || 10) + 1);
               }
             } else if (trend === 'below') {
-              // Reduce load slightly
               if (newWeight) {
                 newWeight = Math.round((newWeight * 0.975) * 2) / 2;
               } else {
@@ -173,9 +175,28 @@ export async function POST(request) {
       }
     }
 
+    // Generate AI session summary asynchronously (don't block response)
+    let aiSummary = null;
+    try {
+      const baseUrl = request.headers.get('host') || 'localhost:3000';
+      const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+      const summaryRes = await fetch(`${protocol}://${baseUrl}/api/ai/session-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day_id }),
+      });
+      if (summaryRes.ok) {
+        const summaryData = await summaryRes.json();
+        aiSummary = summaryData.summary;
+      }
+    } catch (summaryErr) {
+      console.error('AI summary generation failed (non-blocking):', summaryErr.message);
+    }
+
     return NextResponse.json({
       performance_rating: performanceRating,
       intensity_change: performanceRating === 'exceeded' ? 'increased' : performanceRating === 'below' ? 'decreased' : 'maintained',
+      ai_summary: aiSummary,
     });
   } catch (err) {
     console.error('complete-day error:', err);
