@@ -4,9 +4,26 @@ import { useState, useEffect } from 'react';
 
 const MEAL_TYPES = ['all', 'breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout', 'shake'];
 const DIETARY_TAGS = ['high_protein', 'low_carb', 'vegan', 'vegetarian', 'gluten_free', 'dairy_free', 'keto', 'paleo'];
+const GOAL_TYPES = [
+  { value: 'performance', label: 'Performance' },
+  { value: 'bulk', label: 'Bulk / Gain Muscle' },
+  { value: 'cut', label: 'Cut / Lose Fat' },
+  { value: 'maintain', label: 'Maintain Weight' },
+];
+const COOKING_SKILLS = [
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
+];
+const BUDGET_OPTIONS = [
+  { value: 'low', label: 'Low Budget' },
+  { value: 'medium', label: 'Medium Budget' },
+  { value: 'high', label: 'High Budget' },
+];
+const PREP_TIME_OPTIONS = [15, 30, 45, 60];
 
 export default function NutritionPage() {
-  const [tab, setTab] = useState('meals'); // meals | plans | players
+  const [tab, setTab] = useState('meals'); // meals | plans | logs
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -17,6 +34,25 @@ export default function NutritionPage() {
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
+  const [playerPrefs, setPlayerPrefs] = useState(null);
+
+  // Editable goal fields (coach can adjust AI suggestions)
+  const [goalForm, setGoalForm] = useState({
+    goal_type: 'performance',
+    daily_calories: '',
+    protein_target_g: '',
+    carbs_target_g: '',
+    fat_target_g: '',
+    meals_per_day: 5,
+    snacks_per_day: 2,
+    cooking_skill: 'intermediate',
+    budget: 'medium',
+    prep_time_max_min: 30,
+    special_notes: '',
+  });
+
   const [addForm, setAddForm] = useState({
     name: '', description: '', meal_type: 'lunch', cuisine: '',
     calories: '', protein_g: '', carbs_g: '', fat_g: '',
@@ -56,6 +92,48 @@ export default function NutritionPage() {
 
   useEffect(() => { loadMeals(); }, [mealType, search]);
 
+  // Load AI suggestions when player is selected
+  useEffect(() => {
+    if (selectedPlayer && showAIGen) {
+      loadSuggestions(selectedPlayer);
+    }
+  }, [selectedPlayer, showAIGen]);
+
+  async function loadSuggestions(playerId) {
+    setSuggestLoading(true);
+    setSuggestions(null);
+    setPlayerPrefs(null);
+    try {
+      const [suggestRes, prefsRes] = await Promise.all([
+        fetch(`/api/nutrition-plans/suggest-goals?player_id=${playerId}`),
+        fetch(`/api/players/${playerId}/food-preferences`),
+      ]);
+
+      if (suggestRes.ok) {
+        const data = await suggestRes.json();
+        setSuggestions(data);
+        // Pre-fill the form with AI suggestions
+        setGoalForm(f => ({
+          ...f,
+          goal_type: data.suggestions.goal_type,
+          daily_calories: data.suggestions.daily_calories,
+          protein_target_g: data.suggestions.protein_target_g,
+          carbs_target_g: data.suggestions.carbs_target_g,
+          fat_target_g: data.suggestions.fat_target_g,
+          meals_per_day: data.suggestions.meals_per_day,
+          snacks_per_day: data.suggestions.snacks_per_day,
+        }));
+      }
+      if (prefsRes.ok) {
+        const data = await prefsRes.json();
+        setPlayerPrefs(data.preferences);
+      }
+    } catch (err) {
+      console.error("Failed to load suggestions:", err);
+    }
+    setSuggestLoading(false);
+  }
+
   async function handleAddMeal() {
     setSaving(true);
     const user = JSON.parse(localStorage.getItem('mf_user') || '{}');
@@ -90,7 +168,26 @@ export default function NutritionPage() {
       const res = await fetch('/api/nutrition-plans/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: selectedPlayer }),
+        body: JSON.stringify({
+          player_id: selectedPlayer,
+          goal: goalForm.goal_type,
+          daily_calories: goalForm.daily_calories ? parseInt(goalForm.daily_calories) : undefined,
+          protein_target_g: goalForm.protein_target_g ? parseInt(goalForm.protein_target_g) : undefined,
+          carbs_target_g: goalForm.carbs_target_g ? parseInt(goalForm.carbs_target_g) : undefined,
+          fat_target_g: goalForm.fat_target_g ? parseInt(goalForm.fat_target_g) : undefined,
+          meals_per_day: goalForm.meals_per_day,
+          snacks_per_day: goalForm.snacks_per_day,
+          cooking_skill: goalForm.cooking_skill,
+          budget: goalForm.budget,
+          prep_time_max_min: goalForm.prep_time_max_min,
+          special_notes: goalForm.special_notes,
+          // Player prefs are loaded server-side from DB, but we also pass them for override
+          dietary_restrictions: playerPrefs?.dietary_restrictions,
+          allergies: playerPrefs?.allergies,
+          favorite_foods: playerPrefs?.favorite_foods,
+          disliked_foods: playerPrefs?.disliked_foods,
+          cuisine_preferences: playerPrefs?.cuisine_preferences,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -367,8 +464,8 @@ export default function NutritionPage() {
 
       {/* AI Generate Plan Modal */}
       {showAIGen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowAIGen(false); setGenResult(null); }}>
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowAIGen(false); setGenResult(null); setSuggestions(null); setPlayerPrefs(null); }}>
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
@@ -376,12 +473,13 @@ export default function NutritionPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">AI Nutrition Plan Generator</h2>
-                  <p className="text-sm text-gray-500">Generates a personalized 7-day meal plan based on player profile, training load, and goals</p>
+                  <p className="text-sm text-gray-500">Configure goals, review AI suggestions, then generate a personalized 7-day plan</p>
                 </div>
               </div>
 
               {!genResult && (
                 <>
+                  {/* Player Selector */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Select Player</label>
                     <select value={selectedPlayer} onChange={e => setSelectedPlayer(e.target.value)}
@@ -390,9 +488,196 @@ export default function NutritionPage() {
                       {players.map(p => <option key={p.id} value={p.id}>{p.name} ({p.weight_kg || '?'}kg, {p.position?.join('/') || 'Player'})</option>)}
                     </select>
                   </div>
-                  <div className="bg-purple-50 rounded-xl p-4 text-sm text-purple-700 mb-4">
-                    <strong>AI considers:</strong> Player weight/height, training frequency, active exercise plan phase, fitness level, and nutritional goals to calculate TDEE and optimal macro splits.
-                  </div>
+
+                  {/* AI Suggested Goals Section */}
+                  {selectedPlayer && (
+                    <>
+                      {suggestLoading ? (
+                        <div className="bg-purple-50 rounded-xl p-6 mb-4 flex items-center justify-center gap-3">
+                          <svg className="animate-spin h-5 w-5 text-purple-600" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          <span className="text-sm text-purple-700 font-medium">Loading AI suggestions for this player...</span>
+                        </div>
+                      ) : suggestions && (
+                        <>
+                          {/* AI Suggestions Summary */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+                            <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-1.5">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                              AI Suggested Goals
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                              <div className="bg-white/60 rounded-lg p-2">
+                                <div className="text-lg font-bold text-purple-700">{suggestions.suggestions.tdee}</div>
+                                <div className="text-[10px] text-purple-500">TDEE (cal)</div>
+                              </div>
+                              <div className="bg-white/60 rounded-lg p-2">
+                                <div className="text-lg font-bold text-purple-700">{suggestions.suggestions.bmr}</div>
+                                <div className="text-[10px] text-purple-500">BMR (cal)</div>
+                              </div>
+                              <div className="bg-white/60 rounded-lg p-2">
+                                <div className="text-lg font-bold text-purple-700">{suggestions.training.weekly_workouts}</div>
+                                <div className="text-[10px] text-purple-500">Workouts/wk</div>
+                              </div>
+                              <div className="bg-white/60 rounded-lg p-2">
+                                <div className="text-lg font-bold text-purple-700">{suggestions.wellness.avg_nutrition_quality ?? '--'}</div>
+                                <div className="text-[10px] text-purple-500">Avg Nutrition/5</div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-purple-600 mt-3">
+                              Player: {suggestions.player.name} | {suggestions.player.weight_kg}kg, {suggestions.player.height_cm}cm, age {suggestions.player.age} | {suggestions.player.fitness_level} level
+                            </p>
+                          </div>
+
+                          {/* Editable Goal Fields */}
+                          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-4">
+                            <h3 className="text-sm font-semibold text-gray-800">Goals & Targets (adjust as needed)</h3>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Goal Type</label>
+                                <select value={goalForm.goal_type} onChange={e => setGoalForm(f => ({ ...f, goal_type: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {GOAL_TYPES.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Daily Calories</label>
+                                <input type="number" value={goalForm.daily_calories} onChange={e => setGoalForm(f => ({ ...f, daily_calories: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Protein (g)</label>
+                                <input type="number" value={goalForm.protein_target_g} onChange={e => setGoalForm(f => ({ ...f, protein_target_g: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Carbs (g)</label>
+                                <input type="number" value={goalForm.carbs_target_g} onChange={e => setGoalForm(f => ({ ...f, carbs_target_g: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Fat (g)</label>
+                                <input type="number" value={goalForm.fat_target_g} onChange={e => setGoalForm(f => ({ ...f, fat_target_g: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Meals/Day</label>
+                                <select value={goalForm.meals_per_day} onChange={e => setGoalForm(f => ({ ...f, meals_per_day: parseInt(e.target.value) }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {[3, 4, 5, 6].map(n => <option key={n} value={n}>{n} meals</option>)}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Snacks/Day</label>
+                                <select value={goalForm.snacks_per_day} onChange={e => setGoalForm(f => ({ ...f, snacks_per_day: parseInt(e.target.value) }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {[0, 1, 2, 3].map(n => <option key={n} value={n}>{n} snacks</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Cooking Skill</label>
+                                <select value={goalForm.cooking_skill} onChange={e => setGoalForm(f => ({ ...f, cooking_skill: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {COOKING_SKILLS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Budget</label>
+                                <select value={goalForm.budget} onChange={e => setGoalForm(f => ({ ...f, budget: e.target.value }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {BUDGET_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Max Prep Time</label>
+                                <select value={goalForm.prep_time_max_min} onChange={e => setGoalForm(f => ({ ...f, prep_time_max_min: parseInt(e.target.value) }))}
+                                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                  {PREP_TIME_OPTIONS.map(t => <option key={t} value={t}>{t} min</option>)}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Special Notes for AI</label>
+                              <textarea value={goalForm.special_notes} onChange={e => setGoalForm(f => ({ ...f, special_notes: e.target.value }))}
+                                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none" rows={2}
+                                placeholder="e.g. Player is recovering from injury, needs extra anti-inflammatory foods..." />
+                            </div>
+                          </div>
+
+                          {/* Player Food Preferences (read-only) */}
+                          {playerPrefs && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                              <h3 className="text-sm font-semibold text-amber-800 mb-3">Player Food Preferences</h3>
+                              <div className="space-y-2">
+                                {playerPrefs.favorite_foods?.length > 0 && (
+                                  <div>
+                                    <span className="text-xs font-medium text-amber-700">Favorites: </span>
+                                    <div className="flex gap-1 flex-wrap mt-1">
+                                      {playerPrefs.favorite_foods.map(f => (
+                                        <span key={f} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">{f}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {playerPrefs.disliked_foods?.length > 0 && (
+                                  <div>
+                                    <span className="text-xs font-medium text-amber-700">Dislikes: </span>
+                                    <div className="flex gap-1 flex-wrap mt-1">
+                                      {playerPrefs.disliked_foods.map(f => (
+                                        <span key={f} className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">{f}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {playerPrefs.allergies?.length > 0 && (
+                                  <div>
+                                    <span className="text-xs font-medium text-amber-700">Allergies: </span>
+                                    <div className="flex gap-1 flex-wrap mt-1">
+                                      {playerPrefs.allergies.map(a => (
+                                        <span key={a} className="text-xs px-2 py-0.5 bg-red-200 text-red-800 rounded-full">{a}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {playerPrefs.dietary_restrictions?.length > 0 && (
+                                  <div>
+                                    <span className="text-xs font-medium text-amber-700">Dietary: </span>
+                                    <div className="flex gap-1 flex-wrap mt-1">
+                                      {playerPrefs.dietary_restrictions.map(d => (
+                                        <span key={d} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full capitalize">{d.replace('_', ' ')}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {playerPrefs.cuisine_preferences?.length > 0 && (
+                                  <div>
+                                    <span className="text-xs font-medium text-amber-700">Cuisines: </span>
+                                    <div className="flex gap-1 flex-wrap mt-1">
+                                      {playerPrefs.cuisine_preferences.map(c => (
+                                        <span key={c} className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">{c}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {(!playerPrefs.favorite_foods?.length && !playerPrefs.disliked_foods?.length &&
+                                  !playerPrefs.allergies?.length && !playerPrefs.dietary_restrictions?.length) && (
+                                  <p className="text-xs text-amber-600">No food preferences set by this player yet. The player can set these from their nutrition dashboard.</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
                   <button onClick={handleGeneratePlan} disabled={generating || !selectedPlayer}
                     className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
                     {generating ? (
@@ -401,7 +686,7 @@ export default function NutritionPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                        Generating plan with AI...
+                        Generating plan with AI (this may take 30-60 seconds)...
                       </>
                     ) : 'Generate Nutrition Plan'}
                   </button>
@@ -459,7 +744,7 @@ export default function NutritionPage() {
                   )}
 
                   <div className="flex gap-3">
-                    <button onClick={() => { setShowAIGen(false); setGenResult(null); loadMeals(); }}
+                    <button onClick={() => { setShowAIGen(false); setGenResult(null); setSuggestions(null); setPlayerPrefs(null); loadMeals(); }}
                       className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
                       Done
                     </button>

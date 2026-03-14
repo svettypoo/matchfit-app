@@ -5,25 +5,59 @@ const supabaseAdmin = getSupabaseAdmin();
 /**
  * POST /api/nutrition-plans/generate
  * AI-generates a personalized nutrition plan based on player profile,
- * exercise plan, dietary restrictions, and goals.
- * Body: { player_id, goal?, dietary_restrictions?, allergies? }
+ * exercise plan, dietary restrictions, goals, and food preferences.
+ * Body: { player_id, goal?, dietary_restrictions?, allergies?, favorite_foods?,
+ *         disliked_foods?, cuisine_preferences?, meals_per_day?, snacks_per_day?,
+ *         budget?, cooking_skill?, prep_time_max_min?, daily_calories?, protein_target_g?,
+ *         carbs_target_g?, fat_target_g?, special_notes? }
  */
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { player_id, goal, dietary_restrictions, allergies } = body;
+    const {
+      player_id,
+      goal,
+      dietary_restrictions,
+      allergies,
+      favorite_foods,
+      disliked_foods,
+      cuisine_preferences,
+      meals_per_day,
+      snacks_per_day,
+      budget,
+      cooking_skill,
+      prep_time_max_min,
+      daily_calories: overrideCalories,
+      protein_target_g: overrideProtein,
+      carbs_target_g: overrideCarbs,
+      fat_target_g: overrideFat,
+      special_notes,
+    } = body;
 
     if (!player_id) {
       return NextResponse.json({ error: "player_id required" }, { status: 400 });
     }
 
-    // Fetch player profile
+    // Fetch player profile (including food_preferences)
     const { data: player } = await supabaseAdmin
       .from("mf_players")
       .select("*")
       .eq("id", player_id)
       .single();
     if (!player) return NextResponse.json({ error: "Player not found" }, { status: 404 });
+
+    // Merge player saved preferences with request overrides
+    const savedPrefs = player.food_preferences || {};
+    const effectiveFavorites = favorite_foods?.length ? favorite_foods : (savedPrefs.favorite_foods || []);
+    const effectiveDisliked = disliked_foods?.length ? disliked_foods : (savedPrefs.disliked_foods || []);
+    const effectiveAllergies = allergies?.length ? allergies : (savedPrefs.allergies || []);
+    const effectiveDietaryRestrictions = dietary_restrictions?.length ? dietary_restrictions : (savedPrefs.dietary_restrictions || []);
+    const effectiveCuisine = cuisine_preferences?.length ? cuisine_preferences : (savedPrefs.cuisine_preferences || []);
+    const effectiveMealsPerDay = meals_per_day || savedPrefs.meals_per_day || 5;
+    const effectiveSnacksPerDay = snacks_per_day ?? 2;
+    const effectiveCookingSkill = cooking_skill || savedPrefs.cooking_skill || 'intermediate';
+    const effectiveBudget = budget || 'medium';
+    const effectivePrepTime = prep_time_max_min || 30;
 
     // Fetch active exercise plan for context
     const { data: exercisePlan } = await supabaseAdmin
@@ -96,13 +130,34 @@ export async function POST(request) {
       proteinPct = 0.25; carbsPct = 0.55; fatPct = 0.20;
     }
 
-    const proteinTarget = Math.round((calorieTarget * proteinPct) / 4);
-    const carbsTarget = Math.round((calorieTarget * carbsPct) / 4);
-    const fatTarget = Math.round((calorieTarget * fatPct) / 9);
+    let proteinTarget = Math.round((calorieTarget * proteinPct) / 4);
+    let carbsTarget = Math.round((calorieTarget * carbsPct) / 4);
+    let fatTarget = Math.round((calorieTarget * fatPct) / 9);
+
+    // Apply coach overrides if provided
+    if (overrideCalories) calorieTarget = overrideCalories;
+    if (overrideProtein) proteinTarget = overrideProtein;
+    if (overrideCarbs) carbsTarget = overrideCarbs;
+    if (overrideFat) fatTarget = overrideFat;
 
     const mealList = (meals || [])
       .map(m => `- ${m.name} (${m.meal_type}, ${m.calories || "?"}cal, P:${m.protein_g || "?"}g C:${m.carbs_g || "?"}g F:${m.fat_g || "?"}g, tags: ${(m.dietary_tags || []).join(",") || "none"})`)
       .join("\n");
+
+    // Build food preferences section for prompt
+    let foodPrefsSection = "";
+    if (effectiveFavorites.length > 0) {
+      foodPrefsSection += `\nFAVORITE FOODS (include these where possible, the player enjoys them): ${effectiveFavorites.join(", ")}`;
+    }
+    if (effectiveDisliked.length > 0) {
+      foodPrefsSection += `\nDISLIKED FOODS (AVOID these completely, never include them): ${effectiveDisliked.join(", ")}`;
+    }
+    if (effectiveCuisine.length > 0) {
+      foodPrefsSection += `\nPREFERRED CUISINES (lean towards these cooking styles): ${effectiveCuisine.join(", ")}`;
+    }
+
+    const totalMealsPerDay = effectiveMealsPerDay;
+    const mealStructure = `${effectiveMealsPerDay - effectiveSnacksPerDay} main meals and ${effectiveSnacksPerDay} snacks`;
 
     const prompt = `You are an elite sports nutritionist creating a personalized 7-day meal plan for an athlete.
 
@@ -121,30 +176,41 @@ TRAINING CONTEXT:
 CALCULATED TARGETS:
 - TDEE: ${tdee} cal/day
 - Calorie target: ${calorieTarget} cal/day (${playerGoal})
-- Protein: ${proteinTarget}g/day (${proteinPct * 100}%)
-- Carbs: ${carbsTarget}g/day (${carbsPct * 100}%)
-- Fat: ${fatTarget}g/day (${fatPct * 100}%)
+- Protein: ${proteinTarget}g/day
+- Carbs: ${carbsTarget}g/day
+- Fat: ${fatTarget}g/day
 
-DIETARY RESTRICTIONS: ${(dietary_restrictions || []).join(", ") || "none"}
-ALLERGIES: ${(allergies || []).join(", ") || "none"}
+DIETARY RESTRICTIONS: ${effectiveDietaryRestrictions.join(", ") || "none"}
+ALLERGIES: ${effectiveAllergies.join(", ") || "none"}
+${foodPrefsSection}
+
+MEAL STRUCTURE: ${totalMealsPerDay} meals per day (${mealStructure})
+COOKING SKILL: ${effectiveCookingSkill} (adjust recipe complexity accordingly)
+BUDGET: ${effectiveBudget} (${effectiveBudget === 'low' ? 'use affordable ingredients, avoid expensive items' : effectiveBudget === 'high' ? 'premium ingredients allowed' : 'moderate ingredient costs'})
+MAX PREP TIME PER MEAL: ${effectivePrepTime} minutes
+${special_notes ? `\nCOACH NOTES: ${special_notes}` : ''}
 
 AVAILABLE MEALS IN LIBRARY (use these when possible, or suggest new ones):
 ${mealList || "No meals in library yet — suggest all new meals."}
 
-Create a 7-day meal plan with 5-6 meals per day (breakfast, morning snack, lunch, afternoon snack, dinner, optional evening snack).
+Create a 7-day meal plan with ${totalMealsPerDay} meals per day (${mealStructure}).
 
 For each meal, consider:
 - Pre/post workout timing on training days
 - Higher carbs on training days, slightly lower on rest days
 - Protein distributed evenly across meals
 - Hydration reminders
+- Player's favorite foods should appear frequently
+- Player's disliked foods must NEVER appear
+- Recipes should match the player's cooking skill level
+- Each meal should be preparable within ${effectivePrepTime} minutes
 
 Return JSON:
 \`\`\`json
 {
   "name": "Plan name",
   "description": "Brief description",
-  "ai_writeup": "Detailed 3-4 paragraph nutritional analysis. Explain the macro split rationale, meal timing strategy relative to training, key nutritional priorities for this athlete, hydration recommendations, and supplement suggestions if appropriate.",
+  "ai_writeup": "Detailed 3-4 paragraph nutritional analysis. Explain the macro split rationale, meal timing strategy relative to training, key nutritional priorities for this athlete, hydration recommendations, and supplement suggestions if appropriate. Mention how the plan incorporates the player's food preferences.",
   "daily_calories": ${calorieTarget},
   "protein_target_g": ${proteinTarget},
   "carbs_target_g": ${carbsTarget},
@@ -178,11 +244,13 @@ Return JSON:
 
 Requirements:
 - 7 complete days (day_of_week 0-6, 0=Sunday)
-- Each day: 5-6 meals totaling close to ${calorieTarget} calories
+- Each day: ${totalMealsPerDay} meals totaling close to ${calorieTarget} calories
 - Training days: pre-workout and post-workout meals timed appropriately
 - Include a practical shopping list
 - Meals should be realistic, easy to prep, and appetizing
-- Respect ALL dietary restrictions and allergies`;
+- Respect ALL dietary restrictions and allergies
+- Include the player's favorite foods as often as nutritionally appropriate
+- NEVER include any of the player's disliked foods`;
 
     const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -232,8 +300,8 @@ Requirements:
         protein_target_g: planData.protein_target_g || proteinTarget,
         carbs_target_g: planData.carbs_target_g || carbsTarget,
         fat_target_g: planData.fat_target_g || fatTarget,
-        dietary_restrictions: dietary_restrictions || [],
-        allergies: allergies || [],
+        dietary_restrictions: effectiveDietaryRestrictions,
+        allergies: effectiveAllergies,
         goal: playerGoal,
         status: "active",
         start_date: new Date().toISOString().split("T")[0],
