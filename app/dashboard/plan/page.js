@@ -53,9 +53,12 @@ export default function PlanPage() {
           }
 
           // Initialize edits from plan data
+          // Auto-complete: all exercises in available days start as DONE
+          // Player only edits if they deviated from the prescription
           const edits = {};
           const completed = {};
           data.mf_plan_days.forEach(day => {
+            const isAvailable = day.status === 'available';
             (day.mf_plan_exercises || []).forEach(pe => {
               edits[pe.id] = {
                 sets: pe.sets || 3,
@@ -64,7 +67,8 @@ export default function PlanPage() {
                 duration_sec: pe.duration_sec || null,
                 rest_sec: pe.rest_sec || 60,
               };
-              completed[pe.id] = pe.completed || false;
+              // Auto-mark as completed if the day is available (today's workout)
+              completed[pe.id] = pe.completed || isAvailable;
             });
           });
           setExerciseEdits(edits);
@@ -257,7 +261,23 @@ export default function PlanPage() {
               <div className="mb-2">
                 <h2 className="font-bold text-gray-900">{currentDay.name}</h2>
                 {currentDay.focus && <p className="text-sm text-gray-500">{currentDay.focus}</p>}
+                {currentDay.status === 'available' && allDone && (
+                  <p className="text-xs text-green-600 mt-1 font-medium">All exercises pre-filled as complete. Tap any exercise to adjust if needed.</p>
+                )}
               </div>
+            )}
+
+            {/* Complete Day Button — Top position for zero-friction flow */}
+            {currentDay && currentDay.status === 'available' && currentExercises.length > 0 && allDone && (
+              <button onClick={completeDay} disabled={saving}
+                className="w-full py-4 font-bold rounded-2xl text-lg bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30 transition-all active:scale-[0.98] disabled:opacity-50">
+                {saving ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Saving...
+                  </span>
+                ) : 'Done — Complete Workout'}
+              </button>
             )}
 
             {currentExercises.length === 0 && (
@@ -418,31 +438,33 @@ export default function PlanPage() {
                     )}
                   </div>
 
-                  {/* Completion Satisfaction Bar */}
-                  {isCompleted && (
-                    <div className="bg-green-500 px-4 py-2 flex items-center justify-center gap-2 text-white">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  {/* Completion Bar */}
+                  {isCompleted ? (
+                    <div className="bg-green-500 px-4 py-1.5 flex items-center justify-center gap-2 text-white text-xs">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                       </svg>
-                      <span className="text-sm font-semibold">Exercise Complete</span>
+                      <span className="font-medium">Done as prescribed</span>
+                      <span className="opacity-70 ml-1">— tap checkmark or edit to change</span>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-100 px-4 py-1.5 flex items-center justify-center gap-2 text-amber-700 text-xs">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                      </svg>
+                      <span className="font-medium">Skipped — tap checkmark to mark done</span>
                     </div>
                   )}
                 </div>
               );
             })}
 
-            {/* Complete Day Button */}
-            {currentDay && currentDay.status === 'available' && currentExercises.length > 0 && (
+            {/* Complete Day Button — Bottom (shown when player unchecked some exercises) */}
+            {currentDay && currentDay.status === 'available' && currentExercises.length > 0 && !allDone && completedCount > 0 && (
               <div className="pt-2">
-                <button onClick={completeDay} disabled={saving || completedCount === 0}
-                  className={`w-full py-3.5 font-semibold rounded-xl text-lg transition-all ${
-                    allDone
-                      ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20'
-                      : completedCount > 0
-                        ? 'bg-green-600/80 text-white/90'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  } disabled:opacity-50`}>
-                  {saving ? 'Saving...' : allDone ? 'Complete Workout!' : `Complete Day (${completedCount}/${currentExercises.length})`}
+                <button onClick={completeDay} disabled={saving}
+                  className="w-full py-3.5 font-semibold rounded-xl text-lg bg-green-600/80 text-white/90 transition-all disabled:opacity-50">
+                  {saving ? 'Saving...' : `Complete Day (${completedCount}/${currentExercises.length} exercises)`}
                 </button>
               </div>
             )}
