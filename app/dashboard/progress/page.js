@@ -44,7 +44,7 @@ const RechartsBar = dynamic(() => import('recharts').then(m => {
   };
 }), { ssr: false, loading: () => <div className="h-[200px] bg-gray-100 rounded animate-pulse" /> });
 
-const TABS = ['Overall', 'Exercises', 'Categories'];
+const TABS = ['Plan', 'Overall', 'Exercises', 'Categories'];
 
 const QUOTES = [
   "Success is no accident. It is hard work, perseverance, learning, studying, sacrifice. - Pele",
@@ -58,11 +58,13 @@ const QUOTES = [
 
 export default function ProgressPage() {
   const router = useRouter();
-  const [tab, setTab] = useState('Overall');
+  const [tab, setTab] = useState('Plan');
   const [progressData, setProgressData] = useState(null);
   const [exerciseData, setExerciseData] = useState(null);
+  const [planHistory, setPlanHistory] = useState(null);
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,9 +73,10 @@ export default function ProgressPage() {
       if (!user.id) { router.push('/'); return; }
 
       try {
-        const [progressRes, exerciseRes] = await Promise.all([
+        const [progressRes, exerciseRes, planRes] = await Promise.all([
           fetch(`/api/players/${user.id}/progress`),
           fetch(`/api/players/${user.id}/exercise-progress?weeks=8`),
+          fetch(`/api/players/${user.id}/plan-history`),
         ]);
 
         if (progressRes.ok) setProgressData(await progressRes.json());
@@ -83,6 +86,7 @@ export default function ProgressPage() {
           if (data.exercises?.length > 0) setSelectedExercise(data.exercises[0].id);
           if (data.categories?.length > 0) setSelectedCategory(data.categories[0]);
         }
+        if (planRes.ok) setPlanHistory(await planRes.json());
       } catch (err) {
         console.error(err);
       }
@@ -158,6 +162,238 @@ export default function ProgressPage() {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+
+        {/* =================== PLAN TAB =================== */}
+        {tab === 'Plan' && planHistory && (
+          <>
+            {/* Plan Summary Cards */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Workouts', value: planHistory.summary?.total_workouts || 0, color: 'text-green-600' },
+                { label: 'Exceeded', value: planHistory.summary?.exceeded || 0, color: 'text-blue-600' },
+                { label: 'Met', value: planHistory.summary?.met || 0, color: 'text-gray-600' },
+                { label: 'Below', value: planHistory.summary?.below || 0, color: 'text-amber-600' },
+              ].map(s => (
+                <div key={s.label} className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
+                  <div className={`font-bold text-lg ${s.color}`}>{s.value}</div>
+                  <div className="text-[10px] text-gray-500">{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Weekly Volume Chart with Clickable Dots */}
+            {(planHistory.weekly || []).length > 0 ? (
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-semibold text-gray-700 mb-1">Weekly Plan Volume</h3>
+                <p className="text-xs text-gray-400 mb-3">Tap a bar to see that week's workouts</p>
+                <RechartsBar
+                  data={(planHistory.weekly || []).map(w => ({
+                    label: new Date(w.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    volume: Math.round(w.volume / 1000),
+                    workouts: w.workouts,
+                  }))}
+                  dataKey="volume"
+                  color="#22c55e"
+                />
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" /></svg>
+                <p className="text-gray-500 text-sm">No plan workouts completed yet</p>
+                <p className="text-gray-400 text-xs mt-1">Complete workouts from your exercise plan to see data here</p>
+              </div>
+            )}
+
+            {/* Performance Rating Trend */}
+            {(planHistory.weekly || []).length > 0 && (
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-semibold text-gray-700 mb-1">Performance Trend</h3>
+                <p className="text-xs text-gray-400 mb-3">Exceeded / Met / Below expectations per week</p>
+                <RechartsLine
+                  data={(planHistory.weekly || []).map(w => ({
+                    label: new Date(w.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    exceeded: w.exceeded,
+                    met: w.met,
+                    below: w.below,
+                  }))}
+                  lines={['exceeded', 'met', 'below']}
+                />
+              </div>
+            )}
+
+            {/* Completed Workout Timeline — Clickable Cards */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 border-b bg-gray-50">
+                <h3 className="font-semibold text-gray-700">Completed Workouts</h3>
+                <p className="text-xs text-gray-400">Tap a workout to see exercise details</p>
+              </div>
+
+              {(planHistory.days || []).length === 0 ? (
+                <div className="p-6 text-center text-gray-400 text-sm">No completed plan workouts yet</div>
+              ) : (
+                <div className="divide-y max-h-[50vh] overflow-y-auto">
+                  {(planHistory.days || []).map(day => {
+                    const exercisesDone = (day.mf_plan_exercises || []).filter(e => e.completed).length;
+                    const totalExercises = (day.mf_plan_exercises || []).length;
+                    const ratingColor = day.performance_rating === 'exceeded' ? 'bg-green-500' :
+                      day.performance_rating === 'below' ? 'bg-amber-500' : 'bg-blue-500';
+
+                    return (
+                      <button key={day.id} onClick={() => setSelectedWorkout(day)}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3">
+                        {/* Performance dot */}
+                        <div className={`w-3 h-3 rounded-full shrink-0 ${ratingColor}`} />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 text-sm truncate">{day.name}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            <span>{day.completed_at ? new Date(day.completed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''}</span>
+                            <span className="text-gray-300">|</span>
+                            <span>{exercisesDone}/{totalExercises} exercises</span>
+                            {day.focus && <><span className="text-gray-300">|</span><span className="truncate">{day.focus}</span></>}
+                          </div>
+                        </div>
+
+                        {/* Rating badge */}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                          day.performance_rating === 'exceeded' ? 'bg-green-100 text-green-700' :
+                          day.performance_rating === 'below' ? 'bg-amber-100 text-amber-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {day.performance_rating || 'met'}
+                        </span>
+
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {tab === 'Plan' && !planHistory && (
+          <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+            <p className="text-gray-500 text-sm">Loading plan data...</p>
+          </div>
+        )}
+
+        {/* Workout Detail Modal */}
+        {selectedWorkout && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedWorkout(null)}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-4 border-b flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="font-bold text-gray-900">{selectedWorkout.name}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-500">
+                      {selectedWorkout.completed_at ? new Date(selectedWorkout.completed_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      selectedWorkout.performance_rating === 'exceeded' ? 'bg-green-100 text-green-700' :
+                      selectedWorkout.performance_rating === 'below' ? 'bg-amber-100 text-amber-700' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {selectedWorkout.performance_rating || 'met'}
+                    </span>
+                  </div>
+                  {selectedWorkout.focus && <p className="text-xs text-gray-400 mt-0.5">{selectedWorkout.focus}</p>}
+                  {selectedWorkout.plan_name && <p className="text-xs text-green-600 mt-0.5">{selectedWorkout.plan_name}</p>}
+                </div>
+                <button onClick={() => setSelectedWorkout(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              {/* Exercise List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {(selectedWorkout.mf_plan_exercises || []).map((pe, i) => {
+                  const ex = pe.mf_exercises || {};
+                  const prescribedVol = (pe.sets || 3) * (pe.reps || 10);
+                  const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
+                  const actualVol = actualReps.reduce((s, r) => s + (r || 0), 0);
+                  const volRatio = prescribedVol > 0 ? actualVol / prescribedVol : 1;
+
+                  return (
+                    <div key={pe.id} className={`rounded-xl p-3 border ${pe.completed ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${pe.completed ? 'bg-green-500 text-white' : 'bg-gray-300 text-white'}`}>
+                            {pe.completed ? (
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            ) : i + 1}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm text-gray-900">{ex.name || 'Exercise'}</div>
+                            <div className="text-xs text-gray-500">
+                              {ex.category?.replace('_', ' ')} · {ex.difficulty || 'medium'}
+                            </div>
+                          </div>
+                        </div>
+                        {pe.intensity_change && pe.intensity_change !== 0 && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${pe.intensity_change > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {pe.intensity_change > 0 ? '+' : ''}{pe.intensity_change}%
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Prescribed vs Actual */}
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white rounded-lg p-2 border border-gray-100">
+                          <div className="text-gray-400 text-[10px]">PRESCRIBED</div>
+                          <div className="font-semibold text-gray-700">
+                            {pe.sets || 3}x{pe.reps || 10}
+                            {pe.weight_kg && ` @ ${pe.weight_kg}kg`}
+                          </div>
+                        </div>
+                        <div className={`rounded-lg p-2 border ${pe.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-gray-400 text-[10px]">ACTUAL</div>
+                          <div className="font-semibold text-gray-700">
+                            {pe.completed ? (
+                              <>
+                                {pe.actual_sets || 0}x[{actualReps.join(',')}]
+                                {Array.isArray(pe.actual_weight) && pe.actual_weight.some(w => w) && ` @ ${Math.max(...pe.actual_weight.filter(w => w))}kg`}
+                              </>
+                            ) : 'Skipped'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Volume comparison bar */}
+                      {pe.completed && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
+                            <span>Volume: {actualVol} / {prescribedVol}</span>
+                            <span className={volRatio >= 1.1 ? 'text-green-600 font-medium' : volRatio < 0.85 ? 'text-amber-600 font-medium' : 'text-blue-600 font-medium'}>
+                              {Math.round(volRatio * 100)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div className={`h-1.5 rounded-full transition-all ${volRatio >= 1.1 ? 'bg-green-500' : volRatio < 0.85 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                              style={{ width: `${Math.min(100, volRatio * 100)}%` }} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* RPE + Notes */}
+                      {(pe.actual_rpe || pe.player_notes) && (
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-500">
+                          {pe.actual_rpe && <span>RPE: {pe.actual_rpe}/10</span>}
+                          {pe.player_notes && <span className="truncate">Note: {pe.player_notes}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* =================== OVERALL TAB =================== */}
         {tab === 'Overall' && (

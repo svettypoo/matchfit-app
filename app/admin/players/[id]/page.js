@@ -16,7 +16,7 @@ const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: fa
 const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
 const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
 
-const TABS = ['Overview', 'Progress', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
+const TABS = ['Overview', 'Plan History', 'Progress', 'Calendar', 'Wellness', 'Program', 'Messages', 'Notes'];
 
 export default function PlayerDetailPage() {
   const { id } = useParams();
@@ -30,6 +30,9 @@ export default function PlayerDetailPage() {
   const [progressLoading, setProgressLoading] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [planHistory, setPlanHistory] = useState(null);
+  const [planHistoryLoading, setPlanHistoryLoading] = useState(false);
+  const [expandedPlanDay, setExpandedPlanDay] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -43,6 +46,19 @@ export default function PlayerDetailPage() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== 'Plan History') return;
+    async function loadPlanHistory() {
+      setPlanHistoryLoading(true);
+      try {
+        const res = await fetch(`/api/players/${id}/plan-history`);
+        if (res.ok) setPlanHistory(await res.json());
+      } catch (err) { console.error(err); }
+      setPlanHistoryLoading(false);
+    }
+    loadPlanHistory();
+  }, [id, activeTab]);
 
   useEffect(() => {
     if (activeTab !== 'Progress') return;
@@ -151,6 +167,152 @@ export default function PlayerDetailPage() {
                 ))}
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ============ PLAN HISTORY TAB ============ */}
+      {activeTab === 'Plan History' && (
+        <div className="space-y-4">
+          {planHistoryLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading plan history...</div>
+          ) : !planHistory || (planHistory.days || []).length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>
+              <p className="text-gray-500">No plan workouts completed yet</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { label: 'Total Workouts', value: planHistory.summary?.total_workouts || 0, color: 'text-green-600' },
+                  { label: 'Total Volume', value: planHistory.summary?.total_volume ? `${Math.round(planHistory.summary.total_volume / 1000)}k` : '0', color: 'text-blue-600' },
+                  { label: 'Exceeded', value: planHistory.summary?.exceeded || 0, color: 'text-green-600' },
+                  { label: 'Met', value: planHistory.summary?.met || 0, color: 'text-gray-600' },
+                  { label: 'Below', value: planHistory.summary?.below || 0, color: 'text-amber-600' },
+                ].map(s => (
+                  <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
+                    <div className={`font-bold text-2xl ${s.color}`}>{s.value}</div>
+                    <div className="text-xs text-gray-500 mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Weekly Chart */}
+              {(planHistory.weekly || []).length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <h3 className="font-semibold text-gray-700 mb-3">Weekly Plan Volume</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={(planHistory.weekly || []).map(w => ({
+                      week: new Date(w.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                      volume: Math.round(w.volume / 1000),
+                      workouts: w.workouts,
+                    }))} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="volume" fill="#22c55e" radius={[4, 4, 0, 0]} name="Volume (k)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Workout List */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b bg-gray-50">
+                  <h3 className="font-semibold text-gray-700">Completed Plan Workouts</h3>
+                </div>
+                <div className="divide-y max-h-[60vh] overflow-y-auto">
+                  {(planHistory.days || []).map(day => {
+                    const exercises = day.mf_plan_exercises || [];
+                    const completedEx = exercises.filter(e => e.completed).length;
+                    const isExpanded = expandedPlanDay === day.id;
+                    const ratingBg = day.performance_rating === 'exceeded' ? 'bg-green-100 text-green-700' :
+                      day.performance_rating === 'below' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700';
+
+                    return (
+                      <div key={day.id}>
+                        <button onClick={() => setExpandedPlanDay(isExpanded ? null : day.id)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className={`w-3 h-3 rounded-full shrink-0 ${day.performance_rating === 'exceeded' ? 'bg-green-500' : day.performance_rating === 'below' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                            <div className="min-w-0">
+                              <div className="font-medium text-gray-900 text-sm truncate">{day.name}</div>
+                              <div className="text-xs text-gray-500">
+                                {day.completed_at ? new Date(day.completed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''}
+                                {' · '}{completedEx}/{exercises.length} exercises
+                                {day.plan_name && ` · ${day.plan_name}`}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ratingBg}`}>
+                              {day.performance_rating || 'met'}
+                            </span>
+                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t bg-gray-50/50 px-4 py-3">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-gray-200 text-gray-500">
+                                  <th className="text-left py-1.5 font-medium">Exercise</th>
+                                  <th className="text-center py-1.5 font-medium">Prescribed</th>
+                                  <th className="text-center py-1.5 font-medium">Actual</th>
+                                  <th className="text-center py-1.5 font-medium">Volume %</th>
+                                  <th className="text-center py-1.5 font-medium">RPE</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {exercises.map(pe => {
+                                  const ex = pe.mf_exercises || {};
+                                  const prescribedVol = (pe.sets || 3) * (pe.reps || 10);
+                                  const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
+                                  const actualVol = actualReps.reduce((s, r) => s + (r || 0), 0);
+                                  const volPct = prescribedVol > 0 ? Math.round((actualVol / prescribedVol) * 100) : 0;
+
+                                  return (
+                                    <tr key={pe.id} className={`border-b border-gray-100 ${!pe.completed ? 'opacity-40' : ''}`}>
+                                      <td className="py-1.5 text-gray-800">
+                                        {ex.name || 'Exercise'}
+                                        {pe.intensity_change && pe.intensity_change !== 0 && (
+                                          <span className={`ml-1 text-[10px] font-medium ${pe.intensity_change > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                                            ({pe.intensity_change > 0 ? '+' : ''}{pe.intensity_change}%)
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="text-center text-gray-600">{pe.sets}x{pe.reps}{pe.weight_kg ? ` @${pe.weight_kg}kg` : ''}</td>
+                                      <td className="text-center text-gray-600">
+                                        {pe.completed ? `${pe.actual_sets}x[${actualReps.join(',')}]` : '—'}
+                                      </td>
+                                      <td className="text-center">
+                                        {pe.completed ? (
+                                          <span className={`font-medium ${volPct >= 110 ? 'text-green-600' : volPct < 85 ? 'text-amber-600' : 'text-blue-600'}`}>
+                                            {volPct}%
+                                          </span>
+                                        ) : '—'}
+                                      </td>
+                                      <td className="text-center text-gray-600">{pe.actual_rpe || '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
