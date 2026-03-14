@@ -259,52 +259,65 @@ export default function PlayerDetailPage() {
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t bg-gray-50/50 px-4 py-3">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b border-gray-200 text-gray-500">
-                                  <th className="text-left py-1.5 font-medium">Exercise</th>
-                                  <th className="text-center py-1.5 font-medium">Prescribed</th>
-                                  <th className="text-center py-1.5 font-medium">Actual</th>
-                                  <th className="text-center py-1.5 font-medium">Volume %</th>
-                                  <th className="text-center py-1.5 font-medium">RPE</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {exercises.map(pe => {
-                                  const ex = pe.mf_exercises || {};
-                                  const prescribedVol = (pe.sets || 3) * (pe.reps || 10);
-                                  const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
-                                  const actualVol = actualReps.reduce((s, r) => s + (r || 0), 0);
-                                  const volPct = prescribedVol > 0 ? Math.round((actualVol / prescribedVol) * 100) : 0;
+                          <div className="border-t">
+                            <div className="divide-y divide-gray-100">
+                              {exercises.map((pe, i) => {
+                                const ex = pe.mf_exercises || {};
+                                const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
+                                const actualWeights = Array.isArray(pe.actual_weight) ? pe.actual_weight.filter(w => w) : [];
+                                const maxWeight = actualWeights.length > 0 ? Math.max(...actualWeights) : 0;
+                                const prescribedVol = (pe.sets || 3) * (pe.reps || 10) * (pe.weight_kg || 0);
+                                const actualVol = actualReps.reduce((s, r, j) => s + (r || 0) * (actualWeights[j] || pe.weight_kg || 0), 0);
+                                const volPct = prescribedVol > 0 ? Math.min(Math.round((actualVol / prescribedVol) * 100), 150) : 0;
 
-                                  return (
-                                    <tr key={pe.id} className={`border-b border-gray-100 ${!pe.completed ? 'opacity-40' : ''}`}>
-                                      <td className="py-1.5 text-gray-800">
-                                        {ex.name || 'Exercise'}
-                                        {pe.intensity_change && pe.intensity_change !== 0 && (
-                                          <span className={`ml-1 text-[10px] font-medium ${pe.intensity_change > 0 ? 'text-green-600' : 'text-amber-600'}`}>
-                                            ({pe.intensity_change > 0 ? '+' : ''}{pe.intensity_change}%)
-                                          </span>
+                                return (
+                                  <div key={pe.id} className={`px-4 py-3 ${!pe.completed ? 'opacity-40' : ''}`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${pe.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                        {pe.completed ? '✓' : i + 1}
+                                      </div>
+                                      <span className="font-medium text-sm text-gray-900 flex-1">{ex.name || 'Exercise'}</span>
+                                      {pe.actual_rpe && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">RPE {pe.actual_rpe}</span>}
+                                      {pe.intensity_change && pe.intensity_change !== 0 && (
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${pe.intensity_change > 0 ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                                          {pe.intensity_change > 0 ? '↑' : '↓'} {Math.abs(pe.intensity_change)}%
+                                        </span>
+                                      )}
+                                    </div>
+                                    {pe.completed ? (
+                                      <div className="ml-7">
+                                        <div className="grid grid-cols-3 gap-2 mb-1.5">
+                                          <div className="bg-gray-50 rounded px-2 py-1">
+                                            <div className="text-[9px] text-gray-400 uppercase">Sets</div>
+                                            <div className="text-xs font-semibold">{pe.actual_sets || 0}<span className="text-gray-400 font-normal">/{pe.sets || 3}</span></div>
+                                          </div>
+                                          <div className="bg-gray-50 rounded px-2 py-1">
+                                            <div className="text-[9px] text-gray-400 uppercase">Reps</div>
+                                            <div className="text-xs font-semibold">{actualReps.join(' · ')}<span className="text-gray-400 font-normal block">target {pe.reps}</span></div>
+                                          </div>
+                                          <div className="bg-gray-50 rounded px-2 py-1">
+                                            <div className="text-[9px] text-gray-400 uppercase">Weight</div>
+                                            <div className="text-xs font-semibold">{maxWeight > 0 ? `${maxWeight}kg` : '—'}{pe.weight_kg && <span className="text-gray-400 font-normal block">target {pe.weight_kg}kg</span>}</div>
+                                          </div>
+                                        </div>
+                                        {prescribedVol > 0 && (
+                                          <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                              <div className={`h-full rounded-full ${volPct >= 100 ? 'bg-green-500' : volPct >= 85 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                                                style={{ width: `${Math.min(volPct, 100)}%` }} />
+                                            </div>
+                                            <span className={`text-[10px] font-bold min-w-[28px] text-right ${volPct >= 100 ? 'text-green-600' : volPct >= 85 ? 'text-blue-600' : 'text-amber-600'}`}>{volPct}%</span>
+                                          </div>
                                         )}
-                                      </td>
-                                      <td className="text-center text-gray-600">{pe.sets}x{pe.reps}{pe.weight_kg ? ` @${pe.weight_kg}kg` : ''}</td>
-                                      <td className="text-center text-gray-600">
-                                        {pe.completed ? `${pe.actual_sets}x[${actualReps.join(',')}]` : '—'}
-                                      </td>
-                                      <td className="text-center">
-                                        {pe.completed ? (
-                                          <span className={`font-medium ${volPct >= 110 ? 'text-green-600' : volPct < 85 ? 'text-amber-600' : 'text-blue-600'}`}>
-                                            {volPct}%
-                                          </span>
-                                        ) : '—'}
-                                      </td>
-                                      <td className="text-center text-gray-600">{pe.actual_rpe || '—'}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                        {pe.player_notes && <div className="mt-1 text-[10px] text-gray-500 italic">"{pe.player_notes}"</div>}
+                                      </div>
+                                    ) : (
+                                      <div className="ml-7 text-xs text-gray-400">{pe.sets} × {pe.reps}{pe.weight_kg ? ` @ ${pe.weight_kg}kg` : ''} — skipped</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>

@@ -356,8 +356,10 @@ export default function ProgressPage() {
                           <div className="font-semibold text-gray-700">
                             {pe.completed ? (
                               <>
-                                {pe.actual_sets || 0}x[{actualReps.join(',')}]
-                                {Array.isArray(pe.actual_weight) && pe.actual_weight.some(w => w) && ` @ ${Math.max(...pe.actual_weight.filter(w => w))}kg`}
+                                {pe.actual_sets || 0} sets · {actualReps.join(' · ')} reps
+                                {Array.isArray(pe.actual_weight) && pe.actual_weight.some(w => w) && (
+                                  <span className="block text-gray-500 font-normal">{Math.max(...pe.actual_weight.filter(w => w))}kg peak</span>
+                                )}
                               </>
                             ) : 'Skipped'}
                           </div>
