@@ -26,29 +26,37 @@ export default function AdminLayout({ children }) {
   const [selectedTeam, setSelectedTeam] = useState('');
 
   useEffect(() => {
-    const role = localStorage.getItem('mf_role');
-    if (role !== 'coach') { router.push('/'); return; }
-    const user = JSON.parse(localStorage.getItem('mf_user') || '{}');
-    setProfile(user);
-
-    async function loadTeams() {
+    async function loadAuth() {
       try {
-        const res = await fetch(`/api/teams?coach_id=${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTeams(data.teams || []);
-          if (data.teams?.length > 0) setSelectedTeam(data.teams[0].id);
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) { router.push('/'); return; }
+        const data = await res.json();
+        if (data.role === 'player') { router.push('/dashboard'); return; }
+        if (!data.role) { router.push('/'); return; }
+        setProfile(data.user);
+        localStorage.setItem('mf_user', JSON.stringify(data.user));
+        localStorage.setItem('mf_role', data.role);
+        localStorage.setItem('mf_profile', JSON.stringify(data.profile || {}));
+
+        // Load teams
+        const teamsRes = await fetch(`/api/teams?coach_id=${data.user.id}`);
+        if (teamsRes.ok) {
+          const teamsData = await teamsRes.json();
+          setTeams(teamsData.teams || []);
+          if (teamsData.teams?.length > 0) setSelectedTeam(teamsData.teams[0].id);
         }
       } catch (err) {
         console.error(err);
+        router.push('/');
       }
     }
-    loadTeams();
+    loadAuth();
   }, [router]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
     localStorage.clear();
-    router.push('/');
+    window.location.href = 'https://sso.stproperties.com';
   }
 
   return (
