@@ -18,15 +18,6 @@ export function middleware(request) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(SSO_COOKIE_NAME)?.value;
 
-  // Login/signup pages — redirect to SSO or admin
-  if (pathname === '/' || pathname === '/signup') {
-    if (token) {
-      return NextResponse.redirect(new URL('/admin', request.url));
-    }
-    const returnTo = getExternalUrl(request, '/admin');
-    return NextResponse.redirect(`${SSO_PORTAL_URL}?return_to=${encodeURIComponent(returnTo)}`);
-  }
-
   // Protected routes — require SSO cookie
   if (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) {
     if (!token) {
@@ -39,5 +30,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/', '/signup', '/admin/:path*', '/dashboard/:path*'],
+  matcher: ["/admin/:path*", "/dashboard/:path*"],
 };
