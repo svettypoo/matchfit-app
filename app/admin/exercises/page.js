@@ -247,7 +247,7 @@ export default function AdminExercises() {
 
                 {/* Image strip (compact, only if image exists) */}
                 {hasImage ? (
-                  <div className="relative h-32 bg-gray-100 overflow-hidden">
+                  <div className="relative aspect-square bg-gray-100 overflow-hidden">
                     <img
                       src={ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : ex.image_url}
                       alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -325,7 +325,14 @@ export default function AdminExercises() {
                       )}
                     </div>
                     {(ex.equipment || []).length > 0 && (
-                      <span className="text-gray-400 truncate max-w-[80px]">{ex.equipment[0]}</span>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {ex.equipment.slice(0, 2).map(eq => (
+                          <span key={eq} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium">{eq}</span>
+                        ))}
+                        {ex.equipment.length > 2 && (
+                          <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px]">+{ex.equipment.length - 2}</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

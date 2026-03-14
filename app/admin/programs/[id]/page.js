@@ -144,6 +144,25 @@ export default function ProgramDetailPage() {
         <div><span className="text-xs text-gray-500 block">Total Exercises</span><span className="font-medium">{days.reduce((s, d) => s + (d.mf_program_exercises?.length || 0), 0)}</span></div>
       </div>
 
+      {/* Equipment Summary */}
+      {(() => {
+        const allEquipment = new Set();
+        days.forEach(d => (d.mf_program_exercises || []).forEach(pe => {
+          (pe.mf_exercises?.equipment || []).forEach(eq => allEquipment.add(eq));
+        }));
+        if (allEquipment.size === 0) return null;
+        return (
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Required Equipment</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {[...allEquipment].sort().map(eq => (
+                <span key={eq} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">{eq}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Training Days */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Training Schedule</h2>
