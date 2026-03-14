@@ -249,6 +249,29 @@ export async function PATCH(request, { params }) {
             newBadges.push(badge);
           }
         }
+
+        // Create notification for coach
+        try {
+          const { data: playerInfo } = await supabaseAdmin
+            .from("mf_players")
+            .select("name, team_id, mf_teams(coach_id)")
+            .eq("id", workout.player_id)
+            .single();
+
+          if (playerInfo?.mf_teams?.coach_id) {
+            const pct = completion_pct ?? 100;
+            await supabaseAdmin.from("mf_notifications").insert({
+              player_id: workout.player_id,
+              coach_id: playerInfo.mf_teams.coach_id,
+              type: "workout_completed",
+              title: `${playerInfo.name} completed a workout`,
+              body: `${pct}% completion — ${xpEarned} XP earned${duration_minutes ? ` — ${duration_minutes}min` : ""}`,
+              sent_at: new Date().toISOString(),
+            });
+          }
+        } catch (notifErr) {
+          console.error("Notification insert error:", notifErr);
+        }
       }
     }
 

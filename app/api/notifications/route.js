@@ -6,20 +6,28 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const player_id = searchParams.get("player_id");
+    const coach_id = searchParams.get("coach_id");
 
-    if (!player_id) {
+    if (!player_id && !coach_id) {
       return NextResponse.json(
-        { error: "player_id query parameter is required" },
+        { error: "player_id or coach_id query parameter is required" },
         { status: 400 }
       );
     }
 
-    const { data: notifications, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("mf_notifications")
       .select("*")
-      .eq("player_id", player_id)
       .order("created_at", { ascending: false })
       .limit(50);
+
+    if (coach_id) {
+      query = query.eq("coach_id", coach_id);
+    } else {
+      query = query.eq("player_id", player_id);
+    }
+
+    const { data: notifications, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -54,7 +62,7 @@ export async function POST(request) {
 
     const validTypes = [
       "coach_message", "program_update", "challenge", "badge",
-      "streak", "system",
+      "streak", "system", "workout_completed", "form_submitted",
     ];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
