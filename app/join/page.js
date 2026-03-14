@@ -1,17 +1,40 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function JoinPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [code, setCode] = useState('');
   const [team, setTeam] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [signupLoading, setSignupLoading] = useState(false);
+
+  // Auto-fill code from email link (?code=XXXXXX)
+  useEffect(() => {
+    const urlCode = searchParams.get('code');
+    if (urlCode && urlCode.length >= 6) {
+      const c = urlCode.slice(0, 6).toUpperCase();
+      setCode(c);
+      // Auto-validate
+      (async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/invite/${c}`);
+          const data = await res.json();
+          if (res.ok) setTeam(data);
+          else setError(data.error || 'Invalid code');
+        } catch (err) {
+          setError(err.message);
+        }
+        setLoading(false);
+      })();
+    }
+  }, [searchParams]);
 
   async function validateCode() {
     if (code.length !== 6) return;
