@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import ConfettiEffect from '../../../../components/ConfettiEffect';
+import { IconBarbell, IconRun, IconYoga, IconStretching, IconShoe, IconBallFootball, IconArrowUp, IconFlame, IconHeartRateMonitor } from '@tabler/icons-react';
+
+const CATEGORY_ICONS = {
+  strength: IconBarbell, core: IconYoga, speed: IconRun, agility: IconShoe,
+  ball_work: IconBallFootball, flexibility: IconStretching, recovery: IconHeartRateMonitor,
+  plyometrics: IconArrowUp, functional: IconFlame, cardio: IconRun,
+};
 
 const RPE_LABELS = ['Rest', 'Very Light', 'Light', 'Moderate', 'Somewhat Hard', 'Hard', 'Harder', 'Very Hard', 'Max Effort', 'Absolute Max'];
 
@@ -580,8 +587,8 @@ export default function WorkoutExecutionPage() {
               {swapResults.map(ex => (
                 <button key={ex.id} onClick={() => swapExercise(showSwapModal, ex)}
                   className="w-full text-left p-3 rounded-xl hover:bg-green-50 transition-colors flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-lg shrink-0">
-                    {ex.type === 'strength' ? '🏋️' : ex.type === 'cardio' ? '🏃' : '🧘'}
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                    {(() => { const Icon = CATEGORY_ICONS[ex.category] || CATEGORY_ICONS[ex.type] || IconBarbell; return <Icon size={20} stroke={1.5} className="text-gray-600" />; })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm text-gray-900 truncate">{ex.name}</div>
