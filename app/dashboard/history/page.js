@@ -152,46 +152,84 @@ export default function HistoryPage() {
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-gray-100 px-4 py-3 space-y-2">
+                    <div className="border-t border-gray-100">
                       {item.plan_name && (
-                        <div className="text-xs text-green-600 font-medium mb-2">{item.plan_name}</div>
+                        <div className="px-4 pt-3 pb-1">
+                          <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{item.plan_name}</span>
+                        </div>
                       )}
-                      {exercises.map((pe, i) => {
-                        const ex = pe.mf_exercises || {};
-                        const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
-                        const actualWeights = Array.isArray(pe.actual_weight) ? pe.actual_weight.filter(w => w) : [];
+                      <div className="divide-y divide-gray-50">
+                        {exercises.map((pe, i) => {
+                          const ex = pe.mf_exercises || {};
+                          const actualReps = Array.isArray(pe.actual_reps) ? pe.actual_reps : [];
+                          const actualWeights = Array.isArray(pe.actual_weight) ? pe.actual_weight.filter(w => w) : [];
+                          const maxActualWeight = actualWeights.length > 0 ? Math.max(...actualWeights) : 0;
+                          const prescribedVol = (pe.sets || 3) * (pe.reps || 10) * (pe.weight_kg || 0);
+                          const actualVol = actualReps.reduce((s, r, j) => s + (r || 0) * (actualWeights[j] || pe.weight_kg || 0), 0);
+                          const volPct = prescribedVol > 0 ? Math.min(Math.round((actualVol / prescribedVol) * 100), 150) : 0;
 
-                        return (
-                          <div key={pe.id} className={`flex items-start justify-between text-sm py-1.5 ${!pe.completed ? 'opacity-50' : ''}`}>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${pe.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                                {pe.completed ? '✓' : i + 1}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-gray-700 truncate">{ex.name || 'Exercise'}</div>
-                                <div className="text-[10px] text-gray-400">
-                                  Prescribed: {pe.sets || 3}x{pe.reps || 10}{pe.weight_kg ? ` @ ${pe.weight_kg}kg` : ''}
+                          return (
+                            <div key={pe.id} className={`px-4 py-3 ${!pe.completed ? 'opacity-40' : ''}`}>
+                              <div className="flex items-center gap-2.5 mb-2">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${pe.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                  {pe.completed ? '✓' : i + 1}
                                 </div>
+                                <div className="font-medium text-gray-900 text-sm flex-1">{ex.name || 'Exercise'}</div>
+                                {pe.intensity_change && pe.intensity_change !== 0 && (
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pe.intensity_change > 0 ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                                    {pe.intensity_change > 0 ? '↑' : '↓'} {Math.abs(pe.intensity_change)}%
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                            <div className="text-right shrink-0 ml-2">
+
                               {pe.completed ? (
-                                <div className="text-xs text-gray-600 font-medium">
-                                  {pe.actual_sets || 0}x[{actualReps.join(',')}]
-                                  {actualWeights.length > 0 && ` ${Math.max(...actualWeights)}kg`}
+                                <div className="ml-8.5 pl-0.5">
+                                  <div className="grid grid-cols-3 gap-3 mb-2">
+                                    <div className="bg-gray-50 rounded-lg px-2.5 py-1.5">
+                                      <div className="text-[10px] text-gray-400 uppercase tracking-wide">Sets</div>
+                                      <div className="text-sm font-semibold text-gray-800">{pe.actual_sets || 0}<span className="text-gray-400 font-normal text-xs">/{pe.sets || 3}</span></div>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg px-2.5 py-1.5">
+                                      <div className="text-[10px] text-gray-400 uppercase tracking-wide">Reps</div>
+                                      <div className="text-sm font-semibold text-gray-800">
+                                        {actualReps.length > 0 ? actualReps.join(' · ') : '—'}
+                                        <span className="text-gray-400 font-normal text-xs block">target {pe.reps || 10}</span>
+                                      </div>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg px-2.5 py-1.5">
+                                      <div className="text-[10px] text-gray-400 uppercase tracking-wide">Weight</div>
+                                      <div className="text-sm font-semibold text-gray-800">
+                                        {maxActualWeight > 0 ? `${maxActualWeight}kg` : '—'}
+                                        {pe.weight_kg && <span className="text-gray-400 font-normal text-xs block">target {pe.weight_kg}kg</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {prescribedVol > 0 && (
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all ${volPct >= 100 ? 'bg-green-500' : volPct >= 85 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                                          style={{ width: `${Math.min(volPct, 100)}%` }} />
+                                      </div>
+                                      <span className={`text-[10px] font-bold min-w-[32px] text-right ${volPct >= 100 ? 'text-green-600' : volPct >= 85 ? 'text-blue-600' : 'text-amber-600'}`}>
+                                        {volPct}%
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {pe.player_notes && (
+                                    <div className="mt-1.5 text-xs text-gray-500 italic bg-gray-50 rounded px-2 py-1">"{pe.player_notes}"</div>
+                                  )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-gray-400">—</span>
-                              )}
-                              {pe.intensity_change && pe.intensity_change !== 0 && (
-                                <div className={`text-[10px] font-medium ${pe.intensity_change > 0 ? 'text-green-600' : 'text-amber-600'}`}>
-                                  {pe.intensity_change > 0 ? '+' : ''}{pe.intensity_change}%
+                                <div className="ml-8.5 pl-0.5 text-xs text-gray-400">
+                                  Prescribed: {pe.sets || 3} × {pe.reps || 10}{pe.weight_kg ? ` @ ${pe.weight_kg}kg` : ''} — skipped
                                 </div>
                               )}
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
