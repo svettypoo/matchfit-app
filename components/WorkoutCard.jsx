@@ -64,7 +64,11 @@ export default function WorkoutCard({ workout }) {
           if (!ex) return null;
           return (
             <div key={i} className="flex items-center gap-2 text-xs text-gray-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+              {ex.image_url ? (
+                <img src={ex.image_url} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+              )}
               <span className="truncate">{ex.name}</span>
               <span className="text-gray-400 ml-auto shrink-0">
                 {ex.is_timed ? `${pe.duration_sec || ex.default_duration_sec}s` : `${pe.sets || ex.default_sets}x${pe.reps || ex.default_reps}`}

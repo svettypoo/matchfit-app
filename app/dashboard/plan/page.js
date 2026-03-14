@@ -467,7 +467,7 @@ export default function PlanPage() {
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       {/* Exercise Number / Check */}
                       <button onClick={() => toggleComplete(pe.id)}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 overflow-hidden ${
                           isCompleted
                             ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 scale-110'
                             : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-600'
@@ -476,6 +476,8 @@ export default function PlanPage() {
                           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
+                        ) : ex.image_url ? (
+                          <img src={ex.image_url} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-sm font-bold">{idx + 1}</span>
                         )}
@@ -717,7 +719,9 @@ export default function PlanPage() {
                     const ex = pe.mf_exercises || {};
                     return (
                       <div key={pe.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50">
-                        <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-medium shrink-0">{i + 1}</span>
+                        <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-medium shrink-0 overflow-hidden">
+                          {ex.image_url ? <img src={ex.image_url} alt="" className="w-full h-full object-cover" /> : i + 1}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-gray-700 truncate">{ex.name || 'Exercise'}</div>
                           <div className="text-xs text-gray-400">

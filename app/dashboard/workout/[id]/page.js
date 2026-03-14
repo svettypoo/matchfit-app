@@ -359,9 +359,11 @@ export default function WorkoutExecutionPage() {
                 className="w-full px-4 py-3 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${allSetsDone ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden ${allSetsDone ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                     {allSetsDone ? (
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    ) : ex.image_url ? (
+                      <img src={ex.image_url} alt="" className="w-full h-full object-cover" />
                     ) : i + 1}
                   </div>
                   <div className="text-left min-w-0">
@@ -382,6 +384,12 @@ export default function WorkoutExecutionPage() {
 
               {isExpanded && (
                 <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                  {/* Exercise Reference Image */}
+                  {ex.image_url && (
+                    <div className="flex justify-center">
+                      <img src={ex.image_url} alt={ex.name} className="w-40 h-40 object-contain rounded-xl bg-gray-50" />
+                    </div>
+                  )}
                   {/* Instructions */}
                   {(ex.instructions || ex.tips || ex.description) && (
                     <div>
@@ -587,8 +595,10 @@ export default function WorkoutExecutionPage() {
               {swapResults.map(ex => (
                 <button key={ex.id} onClick={() => swapExercise(showSwapModal, ex)}
                   className="w-full text-left p-3 rounded-xl hover:bg-green-50 transition-colors flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                    {(() => { const Icon = CATEGORY_ICONS[ex.category] || CATEGORY_ICONS[ex.type] || IconBarbell; return <Icon size={20} stroke={1.5} className="text-gray-600" />; })()}
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    {ex.image_url ? (
+                      <img src={ex.image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (() => { const Icon = CATEGORY_ICONS[ex.category] || CATEGORY_ICONS[ex.type] || IconBarbell; return <Icon size={20} stroke={1.5} className="text-gray-600" />; })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm text-gray-900 truncate">{ex.name}</div>
