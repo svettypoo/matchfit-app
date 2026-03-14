@@ -7,6 +7,11 @@ import SimpleChart from '../../../components/SimpleChart';
 export default function CoachDashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [injuryRisk, setInjuryRisk] = useState(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [showProgression, setShowProgression] = useState(null);
+  const [progressionLoading, setProgressionLoading] = useState(false);
+  const [progressionPlayer, setProgressionPlayer] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -14,13 +19,36 @@ export default function CoachDashboardPage() {
       try {
         const res = await fetch(`/api/coach/dashboard?coach_id=${user.id}`);
         if (res.ok) setData(await res.json());
+        // Load injury risk in background
+        setRiskLoading(true);
+        const riskRes = await fetch(`/api/ai/injury-risk?coach_id=${user.id}`);
+        if (riskRes.ok) setInjuryRisk(await riskRes.json());
+        setRiskLoading(false);
       } catch (err) {
         console.error(err);
+        setRiskLoading(false);
       }
       setLoading(false);
     }
     load();
   }, []);
+
+  async function loadProgression(playerId, playerName) {
+    setProgressionLoading(true);
+    setProgressionPlayer(playerName);
+    setShowProgression(null);
+    try {
+      const res = await fetch('/api/ai/auto-progression', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerId }),
+      });
+      if (res.ok) setShowProgression(await res.json());
+    } catch (err) {
+      console.error(err);
+    }
+    setProgressionLoading(false);
+  }
 
   if (loading) {
     return (
@@ -145,6 +173,132 @@ export default function CoachDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* AI Injury Risk Alerts */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">AI Injury Risk Monitor</h3>
+            <p className="text-xs text-gray-400">Analyzes RPE trends, workload spikes, skip patterns, wellness data</p>
+          </div>
+        </div>
+
+        {riskLoading ? (
+          <div className="flex items-center gap-2 py-4 justify-center">
+            <svg className="w-5 h-5 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            <span className="text-sm text-gray-500">Analyzing team health data...</span>
+          </div>
+        ) : injuryRisk?.alerts?.length === 0 ? (
+          <div className="text-center py-4">
+            <svg className="w-8 h-8 mx-auto mb-2 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <p className="text-green-600 font-medium text-sm">{injuryRisk?.summary || 'All clear!'}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 mb-2">{injuryRisk?.summary}</p>
+            {(injuryRisk?.alerts || []).map((a, i) => (
+              <div key={i} className={`rounded-lg p-3 border ${a.risk_level === 'high' ? 'bg-red-50 border-red-200' : a.risk_level === 'medium' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${a.risk_level === 'high' ? 'bg-red-500' : a.risk_level === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                    <span className="text-sm font-medium text-gray-900">{a.player_name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase ${a.risk_level === 'high' ? 'bg-red-100 text-red-700' : a.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {a.risk_level} risk
+                    </span>
+                  </div>
+                  <button onClick={() => loadProgression(a.player_id, a.player_name)}
+                    className="text-[10px] px-2 py-1 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200">
+                    AI Progression
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {a.alerts.map((alert, j) => (
+                    <div key={j} className="flex items-start gap-1.5 text-xs text-gray-600">
+                      <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${alert.severity === 'high' ? 'bg-red-400' : alert.severity === 'medium' ? 'bg-amber-400' : 'bg-gray-400'}`} />
+                      {alert.message}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* AI Progression Modal */}
+      {(progressionLoading || showProgression) && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowProgression(null); setProgressionPlayer(null); }}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">AI Auto-Progression: {progressionPlayer}</h2>
+                  <p className="text-sm text-gray-500">Exercise-by-exercise progression recommendations</p>
+                </div>
+              </div>
+
+              {progressionLoading ? (
+                <div className="text-center py-12">
+                  <svg className="w-10 h-10 animate-spin text-purple-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  <p className="text-gray-600">Analyzing training data...</p>
+                </div>
+              ) : showProgression ? (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className={`rounded-xl p-4 ${showProgression.readiness === 'ready_to_progress' ? 'bg-green-50 border border-green-200' : showProgression.readiness === 'fatigued' ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'}`}>
+                    <p className="text-sm font-medium">{showProgression.summary}</p>
+                    <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                      <span>Sessions: {showProgression.total_sessions}</span>
+                      {showProgression.overall_rpe && <span>Avg RPE: {showProgression.overall_rpe}</span>}
+                      <span>Skip rate: {showProgression.skip_rate}%</span>
+                    </div>
+                  </div>
+
+                  {/* Recommendations */}
+                  {(showProgression.recommendations || []).map((r, i) => (
+                    <div key={i} className="bg-white border border-gray-200 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-900">{r.exercise_name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          r.recommendation === 'increase_weight' ? 'bg-green-100 text-green-700' :
+                          r.recommendation === 'increase_reps' ? 'bg-blue-100 text-blue-700' :
+                          r.recommendation === 'deload' ? 'bg-red-100 text-red-700' :
+                          r.recommendation === 'review' ? 'bg-amber-100 text-amber-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {r.recommendation.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">{r.reasoning}</p>
+                      <div className="flex gap-3 mt-1 text-[10px] text-gray-400">
+                        {r.current_weight && <span>Current: {r.current_weight}kg</span>}
+                        {r.suggested_weight && r.suggested_weight !== r.current_weight && (
+                          <span className="font-medium text-green-600">Suggested: {r.suggested_weight}kg</span>
+                        )}
+                        <span>Sessions: {r.sessions}</span>
+                        {r.latest_rpe && <span>RPE: {r.latest_rpe}</span>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {showProgression.recommendations?.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">{showProgression.summary}</p>
+                  )}
+
+                  <button onClick={() => { setShowProgression(null); setProgressionPlayer(null); }}
+                    className="w-full px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">Close</button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
