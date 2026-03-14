@@ -1,9 +1,12 @@
 /**
- * Generate exercise illustration images using Gemini 2.0 Flash Image Generation
- * For each exercise: Gemini generates a crash-dummy style illustration
- * Then uploads to media.stproperties.com and updates DB
+ * Audit exercise images using Claude Vision via media.stproperties.com/api/analyze-image
+ * Identifies images that are NOT crash test dummies and regenerates them
  *
- * Usage: node generate-exercise-images.js [--start N] [--limit N] [--dry-run]
+ * Usage: node audit-exercise-images.js [--audit-only] [--fix] [--start N] [--limit N]
+ *   --audit-only   Only audit, don't regenerate (default)
+ *   --fix          Audit AND regenerate bad images
+ *   --start N      Start offset for exercises
+ *   --limit N      Max exercises to process (default: all)
  */
 const https = require('https');
 const fs = require('fs');
@@ -16,12 +19,11 @@ const GEMINI_KEY = get('GEMINI_API_KEY');
 const MEDIA_TOKEN = 'svets-media-token-2026';
 const MEDIA_URL = 'https://media.stproperties.com';
 
-// Parse args
 const args = process.argv.slice(2);
 const getArg = (name) => { const i = args.indexOf('--' + name); return i >= 0 && args[i + 1] ? parseInt(args[i + 1]) : null; };
+const FIX = args.includes('--fix');
 const START = getArg('start') || 0;
-const LIMIT = getArg('limit') || 10; // Default 10 at a time
-const DRY_RUN = args.includes('--dry-run');
+const LIMIT = getArg('limit') || 9999;
 
 function httpReq(method, urlStr, headers, body) {
   return new Promise((resolve, reject) => {
@@ -34,7 +36,7 @@ function httpReq(method, urlStr, headers, body) {
       res.on('end', () => {
         const buf = Buffer.concat(chunks);
         try { resolve({ status: res.statusCode, data: JSON.parse(buf.toString()) }); }
-        catch { resolve({ status: res.statusCode, data: buf }); }
+        catch { resolve({ status: res.statusCode, data: buf.toString() }); }
       });
     });
     req.on('error', reject);
@@ -51,6 +53,27 @@ async function supabase(method, path, body) {
   }, body ? JSON.stringify(body) : null);
 }
 
+async function analyzeImage(imageUrl) {
+  // Extract mediaId from URL like https://media.stproperties.com/media/ABC123
+  const mediaId = imageUrl.split('/media/').pop();
+  if (!mediaId) { console.error('  Cannot extract mediaId from:', imageUrl); return null; }
+
+  const body = JSON.stringify({
+    mediaId,
+    prompt: 'Does this image show a stylized mannequin, crash test dummy, or robot figure performing an exercise? Answer "YES" if the figure is a non-human mannequin/dummy/robot (yellow, mechanical, segmented, cartoon-like). Answer "NO" if it shows a real human, anatomical diagram with visible muscles/organs, medical illustration, skeleton, or realistic human body. Answer ONLY "YES" or "NO".'
+  });
+  const res = await httpReq('POST', MEDIA_URL + '/api/analyze-image', {
+    'Authorization': 'Bearer ' + MEDIA_TOKEN,
+    'Content-Type': 'application/json',
+  }, body);
+  if (res.status === 200 && res.data?.analysis) {
+    const answer = res.data.analysis.trim().toUpperCase();
+    return answer.startsWith('YES');
+  }
+  console.error('  Analysis error:', res.status, typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 200) : '');
+  return null; // unknown
+}
+
 async function geminiGenerateImage(prompt) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`;
   const body = {
@@ -62,7 +85,6 @@ async function geminiGenerateImage(prompt) {
     console.error('Gemini error:', res.status, typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 300) : '');
     return null;
   }
-  // Extract image from response
   const parts = res.data?.candidates?.[0]?.content?.parts || [];
   for (const part of parts) {
     if (part.inlineData?.mimeType?.startsWith('image/')) {
@@ -119,47 +141,77 @@ Style requirements:
 }
 
 async function main() {
-  // Fetch exercises that don't have images yet
-  const res = await supabase('GET', `/rest/v1/mf_exercises?select=id,name,category,primary_muscles,secondary_muscles,equipment,instructions&image_url=is.null&order=name&offset=${START}&limit=${LIMIT}`);
+  console.log('=== Exercise Image Audit ===');
+  console.log(`Mode: ${FIX ? 'AUDIT + FIX' : 'AUDIT ONLY'}`);
+
+  // Fetch ALL exercises that have images
+  const res = await supabase('GET', `/rest/v1/mf_exercises?select=id,name,category,primary_muscles,equipment,instructions,image_url&image_url=not.is.null&order=name&offset=${START}&limit=${LIMIT}`);
   const exercises = res.data || [];
-  console.log(`Found ${exercises.length} exercises without images (offset=${START}, limit=${LIMIT})`);
+  console.log(`Found ${exercises.length} exercises with images\n`);
 
-  if (DRY_RUN) {
-    exercises.forEach((e, i) => console.log(`  ${i + 1}. ${e.name} (${e.category})`));
-    console.log('DRY RUN — no images generated');
-    return;
-  }
+  const good = [], bad = [], errors = [];
 
-  let success = 0, failed = 0;
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
-    const slug = ex.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
-    console.log(`\n[${i + 1}/${exercises.length}] ${ex.name}...`);
+    process.stdout.write(`[${i + 1}/${exercises.length}] ${ex.name}... `);
 
     try {
-      // Generate image with Gemini
-      const prompt = buildPrompt(ex);
-      const img = await geminiGenerateImage(prompt);
-      if (!img) { failed++; continue; }
+      const isCrashDummy = await analyzeImage(ex.image_url);
+      if (isCrashDummy === null) {
+        console.log('ANALYSIS ERROR');
+        errors.push(ex);
+      } else if (isCrashDummy) {
+        console.log('OK ✓');
+        good.push(ex);
+      } else {
+        console.log('BAD ✗ — not a crash test dummy');
+        bad.push(ex);
 
-      // Upload to media server
-      const mediaUrl = await uploadToMedia(img.base64, img.mimeType, `exercise-${slug}`);
-      if (!mediaUrl) { failed++; continue; }
+        if (FIX) {
+          console.log('  Regenerating...');
+          const prompt = buildPrompt(ex);
+          const img = await geminiGenerateImage(prompt);
+          if (!img) { console.log('  FAILED to generate'); continue; }
 
-      // Update exercise in DB
-      await supabase('PATCH', `/rest/v1/mf_exercises?id=eq.${ex.id}`, { image_url: mediaUrl });
-      console.log(`  OK: ${mediaUrl}`);
-      success++;
+          const slug = ex.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
+          const mediaUrl = await uploadToMedia(img.base64, img.mimeType, `exercise-${slug}`);
+          if (!mediaUrl) { console.log('  FAILED to upload'); continue; }
 
-      // Rate limit: wait 2 seconds between requests
-      if (i < exercises.length - 1) await new Promise(r => setTimeout(r, 2000));
+          await supabase('PATCH', `/rest/v1/mf_exercises?id=eq.${ex.id}`, { image_url: mediaUrl });
+          console.log(`  FIXED: ${mediaUrl}`);
+
+          // Rate limit
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      // Small delay between analysis calls
+      if (i < exercises.length - 1) await new Promise(r => setTimeout(r, 500));
     } catch (err) {
-      console.error(`  ERROR: ${err.message}`);
-      failed++;
+      console.log(`ERROR: ${err.message}`);
+      errors.push(ex);
     }
   }
 
-  console.log(`\nDone! Success: ${success}, Failed: ${failed}`);
+  console.log('\n=== AUDIT RESULTS ===');
+  console.log(`Good (crash test dummy): ${good.length}`);
+  console.log(`Bad (not crash test dummy): ${bad.length}`);
+  console.log(`Errors: ${errors.length}`);
+
+  if (bad.length > 0) {
+    console.log('\n--- BAD IMAGES (need regeneration) ---');
+    bad.forEach(ex => console.log(`  - ${ex.name} (${ex.category}) — ${ex.image_url}`));
+  }
+
+  if (errors.length > 0) {
+    console.log('\n--- ERRORS (could not analyze) ---');
+    errors.forEach(ex => console.log(`  - ${ex.name} — ${ex.image_url}`));
+  }
+
+  // Save results to file
+  const report = { timestamp: new Date().toISOString(), good: good.length, bad: bad.length, errors: errors.length, badExercises: bad.map(e => ({ id: e.id, name: e.name, category: e.category, image_url: e.image_url })), errorExercises: errors.map(e => ({ id: e.id, name: e.name })) };
+  fs.writeFileSync('audit-results.json', JSON.stringify(report, null, 2));
+  console.log('\nResults saved to audit-results.json');
 }
 
 main().catch(err => { console.error('Fatal:', err); process.exit(1); });

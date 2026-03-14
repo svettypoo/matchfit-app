@@ -1,9 +1,8 @@
 /**
- * Generate exercise illustration images using Gemini 2.0 Flash Image Generation
- * For each exercise: Gemini generates a crash-dummy style illustration
- * Then uploads to media.stproperties.com and updates DB
+ * Fix bad exercise images — regenerate all exercises identified as bad or errored in audit
+ * Reads audit-results.json and regenerates images for all listed exercises
  *
- * Usage: node generate-exercise-images.js [--start N] [--limit N] [--dry-run]
+ * Usage: node fix-exercise-images.js [--start N] [--limit N] [--dry-run]
  */
 const https = require('https');
 const fs = require('fs');
@@ -16,11 +15,10 @@ const GEMINI_KEY = get('GEMINI_API_KEY');
 const MEDIA_TOKEN = 'svets-media-token-2026';
 const MEDIA_URL = 'https://media.stproperties.com';
 
-// Parse args
 const args = process.argv.slice(2);
 const getArg = (name) => { const i = args.indexOf('--' + name); return i >= 0 && args[i + 1] ? parseInt(args[i + 1]) : null; };
 const START = getArg('start') || 0;
-const LIMIT = getArg('limit') || 10; // Default 10 at a time
+const LIMIT = getArg('limit') || 9999;
 const DRY_RUN = args.includes('--dry-run');
 
 function httpReq(method, urlStr, headers, body) {
@@ -34,7 +32,7 @@ function httpReq(method, urlStr, headers, body) {
       res.on('end', () => {
         const buf = Buffer.concat(chunks);
         try { resolve({ status: res.statusCode, data: JSON.parse(buf.toString()) }); }
-        catch { resolve({ status: res.statusCode, data: buf }); }
+        catch { resolve({ status: res.statusCode, data: buf.toString() }); }
       });
     });
     req.on('error', reject);
@@ -59,17 +57,16 @@ async function geminiGenerateImage(prompt) {
   };
   const res = await httpReq('POST', url, { 'Content-Type': 'application/json' }, JSON.stringify(body));
   if (res.status !== 200) {
-    console.error('Gemini error:', res.status, typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 300) : '');
+    console.error('  Gemini error:', res.status, typeof res.data === 'object' ? JSON.stringify(res.data).slice(0, 300) : '');
     return null;
   }
-  // Extract image from response
   const parts = res.data?.candidates?.[0]?.content?.parts || [];
   for (const part of parts) {
     if (part.inlineData?.mimeType?.startsWith('image/')) {
       return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
     }
   }
-  console.error('No image in Gemini response');
+  console.error('  No image in Gemini response');
   return null;
 }
 
@@ -81,7 +78,7 @@ async function uploadToMedia(base64Data, mimeType, filename) {
     'Content-Type': 'application/json',
   }, body);
   if (res.status === 200 && res.data?.url) return res.data.url;
-  console.error('Upload error:', res.status);
+  console.error('  Upload error:', res.status);
   return null;
 }
 
@@ -119,47 +116,67 @@ Style requirements:
 }
 
 async function main() {
-  // Fetch exercises that don't have images yet
-  const res = await supabase('GET', `/rest/v1/mf_exercises?select=id,name,category,primary_muscles,secondary_muscles,equipment,instructions&image_url=is.null&order=name&offset=${START}&limit=${LIMIT}`);
-  const exercises = res.data || [];
-  console.log(`Found ${exercises.length} exercises without images (offset=${START}, limit=${LIMIT})`);
+  // Read audit results
+  if (!fs.existsSync('audit-results.json')) {
+    console.error('audit-results.json not found. Run audit-exercise-images.js first.');
+    process.exit(1);
+  }
+  const audit = JSON.parse(fs.readFileSync('audit-results.json', 'utf8'));
+
+  // Combine bad + error exercises
+  const allIds = [
+    ...audit.badExercises.map(e => e.id),
+    ...audit.errorExercises.map(e => e.id),
+  ];
+
+  console.log(`=== Fix Exercise Images ===`);
+  console.log(`Bad: ${audit.badExercises.length}, Errors: ${audit.errorExercises.length}, Total: ${allIds.length}`);
+
+  // Fetch full exercise data for these IDs
+  const idsToFix = allIds.slice(START, START + LIMIT);
+  console.log(`Processing ${idsToFix.length} exercises (start=${START}, limit=${LIMIT})`);
 
   if (DRY_RUN) {
-    exercises.forEach((e, i) => console.log(`  ${i + 1}. ${e.name} (${e.category})`));
+    const names = [...audit.badExercises, ...audit.errorExercises].slice(START, START + LIMIT);
+    names.forEach((e, i) => console.log(`  ${i + 1}. ${e.name}`));
     console.log('DRY RUN — no images generated');
     return;
   }
 
   let success = 0, failed = 0;
-  for (let i = 0; i < exercises.length; i++) {
-    const ex = exercises[i];
+  for (let i = 0; i < idsToFix.length; i++) {
+    const id = idsToFix[i];
+
+    // Fetch exercise details from DB
+    const res = await supabase('GET', `/rest/v1/mf_exercises?select=id,name,category,primary_muscles,equipment,instructions&id=eq.${id}`);
+    const ex = (res.data || [])[0];
+    if (!ex) { console.log(`[${i+1}/${idsToFix.length}] ID ${id} — not found in DB`); failed++; continue; }
+
     const slug = ex.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
-    console.log(`\n[${i + 1}/${exercises.length}] ${ex.name}...`);
+    console.log(`\n[${i + 1}/${idsToFix.length}] ${ex.name}...`);
 
     try {
-      // Generate image with Gemini
       const prompt = buildPrompt(ex);
       const img = await geminiGenerateImage(prompt);
       if (!img) { failed++; continue; }
 
-      // Upload to media server
       const mediaUrl = await uploadToMedia(img.base64, img.mimeType, `exercise-${slug}`);
       if (!mediaUrl) { failed++; continue; }
 
-      // Update exercise in DB
-      await supabase('PATCH', `/rest/v1/mf_exercises?id=eq.${ex.id}`, { image_url: mediaUrl });
+      await supabase('PATCH', `/rest/v1/mf_exercises?id=eq.${id}`, { image_url: mediaUrl });
       console.log(`  OK: ${mediaUrl}`);
       success++;
 
-      // Rate limit: wait 2 seconds between requests
-      if (i < exercises.length - 1) await new Promise(r => setTimeout(r, 2000));
+      // Rate limit: 3 seconds between Gemini requests
+      if (i < idsToFix.length - 1) await new Promise(r => setTimeout(r, 3000));
     } catch (err) {
       console.error(`  ERROR: ${err.message}`);
       failed++;
     }
   }
 
-  console.log(`\nDone! Success: ${success}, Failed: ${failed}`);
+  console.log(`\n=== DONE ===`);
+  console.log(`Success: ${success}, Failed: ${failed}`);
 }
 
 main().catch(err => { console.error('Fatal:', err); process.exit(1); });

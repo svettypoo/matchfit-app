@@ -2,7 +2,7 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 
-const API_KEY = 'AIzaSyAL3nvtrW7qFF8KPrzKXwv7cswWiALIhSU';
+const API_KEY = 'AIzaSyCkib3FjcJA3YNCoxH5n8kbxvn5djyIYlw';
 const img = fs.readFileSync(path.join('frames', '13-player-progress.png')).toString('base64');
 
 // Try each model until one works

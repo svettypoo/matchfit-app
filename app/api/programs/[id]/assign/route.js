@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import crypto from "crypto";
 const supabaseAdmin = getSupabaseAdmin();
 
 export async function POST(request, { params }) {
   try {
     const { id: program_id } = params;
-    const { player_ids, start_date } = await request.json();
+    const { player_ids, start_date, force } = await request.json();
 
     if (!player_ids || !Array.isArray(player_ids) || player_ids.length === 0) {
       return NextResponse.json(
@@ -121,10 +122,44 @@ export async function POST(request, { params }) {
         }
       }
 
+      // Generate public token for this assignment
+      const programToken = crypto.randomBytes(16).toString("hex");
+
+      // Ensure player has a profile token
+      const { data: player } = await supabaseAdmin
+        .from("mf_players")
+        .select("public_profile_token")
+        .eq("id", player_id)
+        .single();
+
+      if (!player?.public_profile_token) {
+        const profileToken = crypto.randomBytes(16).toString("hex");
+        await supabaseAdmin
+          .from("mf_players")
+          .update({ public_profile_token: profileToken })
+          .eq("id", player_id);
+      }
+
+      // Create public token for this program assignment
+      await supabaseAdmin.from("mf_public_tokens").insert({
+        player_id,
+        coach_id: program.coach_id,
+        token: programToken,
+        type: "program",
+        program_assignment_id: playerProgram.id,
+      });
+
+      // Update the player_program with token reference
+      await supabaseAdmin
+        .from("mf_player_programs")
+        .update({ assigned_via: force ? "reassign" : "manual" })
+        .eq("id", playerProgram.id);
+
       results.push({
         player_id,
         player_program: playerProgram,
         workouts_generated: scheduledWorkouts.length,
+        public_token: programToken,
       });
     }
 

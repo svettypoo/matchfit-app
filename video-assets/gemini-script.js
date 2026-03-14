@@ -36,7 +36,7 @@ const body = JSON.stringify({
 
 const req = https.request({
   hostname: 'generativelanguage.googleapis.com',
-  path: '/v1beta/models/gemini-3.1-pro-preview:generateContent?key=AIzaSyAL3nvtrW7qFF8KPrzKXwv7cswWiALIhSU',
+  path: '/v1beta/models/gemini-3.1-pro-preview:generateContent?key=AIzaSyCkib3FjcJA3YNCoxH5n8kbxvn5djyIYlw',
   method: 'POST',
   headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
   timeout: 30000,

@@ -66,6 +66,103 @@ export default function AdminExercises() {
     exercise_type: 'independent', default_weight_kg: '', instructions: '', tips: '',
     video_url: '', image_url: '',
   });
+  // Program Builder state
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [builderName, setBuilderName] = useState('');
+  const [builderDays, setBuilderDays] = useState([{ name: 'Day 1', exercises: [] }]);
+  const [activeDay, setActiveDay] = useState(0);
+  const [savingProgram, setSavingProgram] = useState(false);
+  const [builderSaved, setBuilderSaved] = useState(false);
+
+  function addToBuilder(exercise) {
+    setShowBuilder(true);
+    setBuilderDays(prev => {
+      const updated = [...prev];
+      const day = { ...updated[activeDay] };
+      // Check if already added
+      if (day.exercises.some(e => e.id === exercise.id)) return prev;
+      day.exercises = [...day.exercises, {
+        id: exercise.id,
+        name: exercise.name,
+        category: exercise.category,
+        sets: exercise.default_sets || 3,
+        reps: exercise.default_reps || 10,
+        duration_seconds: exercise.default_duration_sec || 30,
+        rest_seconds: exercise.default_rest_sec || 60,
+        is_timed: exercise.is_timed || false,
+      }];
+      updated[activeDay] = day;
+      return updated;
+    });
+  }
+
+  function removeFromBuilder(dayIdx, exId) {
+    setBuilderDays(prev => {
+      const updated = [...prev];
+      updated[dayIdx] = { ...updated[dayIdx], exercises: updated[dayIdx].exercises.filter(e => e.id !== exId) };
+      return updated;
+    });
+  }
+
+  function addDay() {
+    setBuilderDays(prev => [...prev, { name: `Day ${prev.length + 1}`, exercises: [] }]);
+    setActiveDay(builderDays.length);
+  }
+
+  function updateBuilderExercise(dayIdx, exId, field, value) {
+    setBuilderDays(prev => {
+      const updated = [...prev];
+      updated[dayIdx] = {
+        ...updated[dayIdx],
+        exercises: updated[dayIdx].exercises.map(e =>
+          e.id === exId ? { ...e, [field]: parseInt(value) || 0 } : e
+        ),
+      };
+      return updated;
+    });
+  }
+
+  async function saveProgram() {
+    if (!builderName.trim()) return;
+    setSavingProgram(true);
+    const profile = JSON.parse(localStorage.getItem('mf_profile') || '{}');
+    try {
+      const res = await fetch('/api/programs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coach_id: profile.id,
+          name: builderName,
+          duration_weeks: 4,
+          difficulty: 'medium',
+          days: builderDays.map((day, i) => ({
+            name: day.name,
+            day_of_week: i,
+            sort_order: i,
+            exercises: day.exercises.map((ex, j) => ({
+              exercise_id: ex.id,
+              sets: ex.sets,
+              reps: ex.reps,
+              duration_seconds: ex.duration_seconds,
+              rest_seconds: ex.rest_seconds,
+              order_index: j,
+            })),
+          })),
+        }),
+      });
+      if (res.ok) {
+        setBuilderSaved(true);
+        setTimeout(() => {
+          setShowBuilder(false);
+          setBuilderName('');
+          setBuilderDays([{ name: 'Day 1', exercises: [] }]);
+          setActiveDay(0);
+          setBuilderSaved(false);
+        }, 1500);
+      }
+    } catch (err) { console.error(err); }
+    setSavingProgram(false);
+  }
 
   useEffect(() => { loadExercises(); }, [category, difficulty, exerciseType, search]);
 
@@ -150,6 +247,10 @@ export default function AdminExercises() {
               <IconList size={16} className="text-gray-600" />
             </button>
           </div>
+          <button onClick={() => setShowBuilder(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
+            <IconPlus size={16} /> Build Program
+          </button>
           <button onClick={() => { resetForm(); setEditingId(null); setShowAdd(true); }}
             className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm transition-colors">
             <IconPlus size={16} /> Add Exercise
@@ -335,6 +436,14 @@ export default function AdminExercises() {
                       </div>
                     )}
                   </div>
+
+                  {/* Add to Program Builder button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); addToBuilder(ex); }}
+                    className="mt-2 w-full py-1.5 bg-blue-50 text-blue-600 text-[11px] font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors flex items-center justify-center gap-1"
+                    title="Add to Program Builder">
+                    <IconPlus size={12} /> Add to Program
+                  </button>
                 </div>
               </div>
             );
@@ -496,6 +605,115 @@ export default function AdminExercises() {
           </div>
         );
       })()}
+
+      {/* Program Builder Panel */}
+      {showBuilder && (
+        <div className="fixed inset-0 z-40 flex justify-end" onClick={() => setShowBuilder(false)}>
+          <div className="bg-black/30 absolute inset-0 lg:hidden" />
+          <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col h-full" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-4 border-b border-gray-100 shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold text-gray-900">Program Builder</h2>
+                <button onClick={() => setShowBuilder(false)} className="text-gray-400 hover:text-gray-600">
+                  <IconX size={20} />
+                </button>
+              </div>
+              <input value={builderName} onChange={e => setBuilderName(e.target.value)}
+                placeholder="Program name..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            {/* Day tabs */}
+            <div className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-gray-100 overflow-x-auto shrink-0">
+              {builderDays.map((day, i) => (
+                <button key={i} onClick={() => setActiveDay(i)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-all ${
+                    activeDay === i ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}>
+                  {day.name} ({day.exercises.length})
+                </button>
+              ))}
+              <button onClick={addDay}
+                className="px-2 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg">
+                <IconPlus size={14} />
+              </button>
+            </div>
+
+            {/* Day name edit */}
+            <div className="px-4 py-2 shrink-0">
+              <input value={builderDays[activeDay]?.name || ''}
+                onChange={e => {
+                  setBuilderDays(prev => {
+                    const updated = [...prev];
+                    updated[activeDay] = { ...updated[activeDay], name: e.target.value };
+                    return updated;
+                  });
+                }}
+                className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Day name..." />
+            </div>
+
+            {/* Exercise list */}
+            <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+              {builderDays[activeDay]?.exercises.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <IconPlus size={24} className="mx-auto mb-2" />
+                  <p className="text-sm">Click "Add to Program" on exercises to add them here</p>
+                </div>
+              ) : builderDays[activeDay]?.exercises.map((ex, idx) => (
+                <div key={ex.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
+                      <span className="text-sm font-medium text-gray-900 truncate">{ex.name}</span>
+                    </div>
+                    <button onClick={() => removeFromBuilder(activeDay, ex.id)}
+                      className="text-gray-400 hover:text-red-500">
+                      <IconX size={14} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-500">Sets</label>
+                      <input type="number" value={ex.sets} min={1}
+                        onChange={e => updateBuilderExercise(activeDay, ex.id, 'sets', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500">{ex.is_timed ? 'Sec' : 'Reps'}</label>
+                      <input type="number" value={ex.is_timed ? ex.duration_seconds : ex.reps} min={1}
+                        onChange={e => updateBuilderExercise(activeDay, ex.id, ex.is_timed ? 'duration_seconds' : 'reps', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500">Rest(s)</label>
+                      <input type="number" value={ex.rest_seconds} min={0}
+                        onChange={e => updateBuilderExercise(activeDay, ex.id, 'rest_seconds', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Save button */}
+            <div className="p-4 border-t border-gray-100 shrink-0">
+              {builderSaved ? (
+                <div className="w-full py-3 bg-green-100 text-green-700 rounded-lg font-medium text-sm text-center">
+                  Program saved!
+                </div>
+              ) : (
+                <button onClick={saveProgram}
+                  disabled={!builderName.trim() || builderDays.every(d => d.exercises.length === 0) || savingProgram}
+                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {savingProgram ? 'Saving...' : `Save Program (${builderDays.reduce((s, d) => s + d.exercises.length, 0)} exercises)`}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showAdd && (

@@ -1,7 +1,7 @@
 const https = require('https');
 const fs = require('fs');
 
-const API_KEY = 'AIzaSyAL3nvtrW7qFF8KPrzKXwv7cswWiALIhSU';
+const API_KEY = 'AIzaSyCkib3FjcJA3YNCoxH5n8kbxvn5djyIYlw';
 
 // Load screenshots as base64
 const screenshots = [

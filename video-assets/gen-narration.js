@@ -2,7 +2,7 @@ const fs = require('fs');
 const https = require('https');
 const { execSync } = require('child_process');
 
-const API_KEY = 'AIzaSyAL3nvtrW7qFF8KPrzKXwv7cswWiALIhSU';
+const API_KEY = 'AIzaSyCkib3FjcJA3YNCoxH5n8kbxvn5djyIYlw';
 const OUT = 'c:/Users/pargo_pxnd4wa/matchfit-app/video-assets';
 
 function tts(text, voice, outFile) {
