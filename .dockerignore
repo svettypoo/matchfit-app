@@ -9,4 +9,5 @@
 !tailwind.config.js
 !postcss.config.mjs
 !jsconfig.json
+!middleware.js
 !Dockerfile
