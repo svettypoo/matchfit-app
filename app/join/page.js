@@ -13,18 +13,18 @@ export default function JoinPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [signupLoading, setSignupLoading] = useState(false);
 
-  // Auto-fill code from email link (?code=XXXXXX)
+  // Auto-fill from email link (?token=FULL_TOKEN) or manual (?code=XXXXXX)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
     const urlCode = params.get('code');
-    if (urlCode && urlCode.length >= 6) {
-      const c = urlCode.slice(0, 6).toUpperCase();
-      setCode(c);
-      // Auto-validate
+    const lookupValue = urlToken || (urlCode && urlCode.length >= 6 ? urlCode.slice(0, 6).toUpperCase() : null);
+    if (lookupValue) {
+      setCode(lookupValue.slice(0, 6).toUpperCase());
       (async () => {
         setLoading(true);
         try {
-          const res = await fetch(`/api/invite/${c}`);
+          const res = await fetch(`/api/invite/${lookupValue}`);
           const data = await res.json();
           if (res.ok) setTeam(data);
           else setError(data.error || 'Invalid code');
@@ -61,7 +61,7 @@ export default function JoinPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, role: 'player', join_code: code }),
+        body: JSON.stringify({ ...form, role: 'player', join_code: code, team_id: team?.team?.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Signup failed');

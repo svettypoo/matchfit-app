@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>MatchFit Equipment Icons Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; color: #e5e5e5; padding: 32px; }
+  h1 { font-size: 24px; margin-bottom: 8px; color: #22c55e; }
+  p { color: #888; margin-bottom: 32px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .card {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+    padding: 16px; display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #22c55e; }
+  .icon-wrap {
+    width: 40px; height: 40px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #222; border-radius: 8px; color: #22c55e;
+  }
+  .icon-wrap svg { width: 24px; height: 24px; }
+  .label { font-size: 13px; font-weight: 500; }
+  .chip-demo { margin-top: 40px; }
+  .chip-demo h2 { font-size: 18px; margin-bottom: 16px; color: #22c55e; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #1a2e1a; border: 1px solid #2d4a2d; border-radius: 20px;
+    padding: 6px 14px 6px 8px; font-size: 12px; font-weight: 500; color: #86efac;
+  }
+  .chip svg { width: 16px; height: 16px; color: #22c55e; }
+  .section { margin-top: 40px; }
+  .section h2 { font-size: 18px; margin-bottom: 16px; color: #22c55e; }
+  .day-header {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+    padding: 20px; max-width: 500px;
+  }
+  .day-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .day-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+  .equip-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+</style>
+</head><body>
+<h1>MatchFit — Equipment Icon Library</h1>
+<p>Clean, minimal line-art SVGs. Monochrome, stroke-based, 24×24 viewBox. Designed for professional UI chips.</p>
+<div class="grid" id="grid"></div>
+
+<div class="chip-demo">
+  <h2>Chip Style (used on exercise cards)</h2>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="section">
+  <h2>Daily Workout Header (player view)</h2>
+  <div class="day-header">
+    <div class="day-title">Monday — Upper Body Strength</div>
+    <div class="day-sub">6 exercises · ~45 min</div>
+    <div class="equip-label">Equipment needed</div>
+    <div class="chips" id="day-chips"></div>
+  </div>
+</div>
+
+<script>
+const EQUIPMENT = {
+  barbell: { label: 'Barbell', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="12" x2="22" y2="12"/><rect x="3" y="8" width="3" height="8" rx="0.5"/><rect x="18" y="8" width="3" height="8" rx="0.5"/><rect x="6" y="9.5" width="1.5" height="5" rx="0.3"/><rect x="16.5" y="9.5" width="1.5" height="5" rx="0.3"/></svg>' },
+  dumbbell: { label: 'Dumbbell', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="0.5"/><rect x="18" y="9" width="4" height="6" rx="0.5"/></svg>' },
+  kettlebell: { label: 'Kettlebell', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="5"/><path d="M9.5 10.5 C9.5 7, 14.5 7, 14.5 10.5"/><line x1="10" y1="10" x2="14" y2="10"/></svg>' },
+  'resistance band': { label: 'Resistance Band', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 C8 6, 16 18, 20 16"/><path d="M4 10 C8 8, 16 20, 20 18"/><circle cx="3" cy="9" r="1.5"/><circle cx="21" cy="17" r="1.5"/></svg>' },
+  bench: { label: 'Bench', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="2.5" rx="0.5"/><line x1="5" y1="13.5" x2="5" y2="19"/><line x1="19" y1="13.5" x2="19" y2="19"/><line x1="3" y1="12" x2="3" y2="8" stroke-width="2"/></svg>' },
+  'squat rack': { label: 'Squat Rack', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="3" x2="5" y2="21"/><line x1="19" y1="3" x2="19" y2="21"/><line x1="3" y1="21" x2="7" y2="21"/><line x1="17" y1="21" x2="21" y2="21"/><line x1="5" y1="9" x2="8" y2="9"/><line x1="16" y1="9" x2="19" y2="9"/></svg>' },
+  'pull-up bar': { label: 'Pull-Up Bar', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6" stroke-width="2"/><line x1="5" y1="6" x2="5" y2="3"/><line x1="19" y1="6" x2="19" y2="3"/></svg>' },
+  'foam roller': { label: 'Foam Roller', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="4"/><line x1="3.5" y1="10" x2="3.5" y2="14"/><line x1="20.5" y1="10" x2="20.5" y2="14"/></svg>' },
+  cones: { label: 'Cones', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19 L12 5 L17 19 Z"/><line x1="5" y1="19" x2="19" y2="19"/><line x1="8.5" y1="14" x2="15.5" y2="14"/></svg>' },
+  'agility ladder': { label: 'Agility Ladder', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="7" y1="6" x2="17" y2="6"/><line x1="7" y1="10" x2="17" y2="10"/><line x1="7" y1="14" x2="17" y2="14"/><line x1="7" y1="18" x2="17" y2="18"/></svg>' },
+  'soccer ball': { label: 'Soccer Ball', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3 L12 7 L16 9.5 L19.5 7.5"/><path d="M12 7 L8 9.5 L4.5 7.5"/><path d="M8 9.5 L8 14 L12 16"/><path d="M16 9.5 L16 14 L12 16"/></svg>' },
+  'medicine ball': { label: 'Medicine Ball', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><line x1="12" y1="4" x2="12" y2="20" stroke-dasharray="3 2"/></svg>' },
+  'plyo box': { label: 'Plyo Box', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 L4 8 L12 4 L20 8 L20 16 L12 20 Z"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="8" x2="20" y2="8"/></svg>' },
+  'ab wheel': { label: 'Ab Wheel', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="5"/><circle cx="12" cy="14" r="1.5"/><line x1="4" y1="14" x2="7" y2="14"/><line x1="17" y1="14" x2="20" y2="14"/></svg>' },
+  'dip bars': { label: 'Dip Bars', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="6" y2="20"/><line x1="18" y1="6" x2="18" y2="20"/><line x1="6" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="18" y2="10"/><line x1="4" y1="20" x2="8" y2="20"/><line x1="16" y1="20" x2="20" y2="20"/></svg>' },
+  'cable machine': { label: 'Cable Machine', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><circle cx="12" cy="7" r="2"/><line x1="12" y1="9" x2="12" y2="16" stroke-dasharray="2 1.5"/><rect x="9" y="16" width="6" height="3" rx="0.5"/></svg>' },
+  'jump rope': { label: 'Jump Rope', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 C6 18, 4 8, 12 5 C20 8, 18 18, 18 18"/><line x1="6" y1="18" x2="6" y2="21"/><line x1="18" y1="18" x2="18" y2="21"/></svg>' },
+  'battle ropes': { label: 'Battle Ropes', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14 C4 10, 6 18, 8 14 C10 10, 12 18, 14 14 C16 10, 18 18, 20 14"/><path d="M2 16 C4 12, 6 20, 8 16 C10 12, 12 20, 14 16 C16 12, 18 20, 20 16"/><circle cx="21" cy="15" r="1.5"/></svg>' },
+  bodyweight: { label: 'Bodyweight', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5 L12 15"/><path d="M8 10 L16 10"/><path d="M12 15 L8 21"/><path d="M12 15 L16 21"/></svg>' },
+  'yoga mat': { label: 'Yoga Mat', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 L21 17"/><path d="M3 17 C3 14, 3 14, 5 14 L19 14 C21 14, 21 14, 21 17"/><circle cx="19" cy="11" r="3"/></svg>' },
+  'rowing machine': { label: 'Rowing Machine', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16 L8 16 L13 10 L21 10"/><circle cx="5" cy="18" r="2"/><rect x="18" y="8" width="4" height="4" rx="0.5"/></svg>' },
+  'running shoes': { label: 'Running Shoes', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16 C3 16, 4 12, 8 12 L16 12 C19 12, 21 14, 21 16 L21 17 L3 17 Z"/><line x1="8" y1="12" x2="7" y2="9"/><line x1="11" y1="12" x2="10.5" y2="10"/></svg>' },
+};
+
+// Render grid
+const grid = document.getElementById('grid');
+const chips = document.getElementById('chips');
+const dayChips = document.getElementById('day-chips');
+
+const dayEquipment = ['barbell', 'bench', 'dumbbell', 'cable machine', 'pull-up bar'];
+
+Object.entries(EQUIPMENT).forEach(([key, { label, icon }]) => {
+  // Grid card
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="icon-wrap">${icon}</div><div class="label">${label}</div>`;
+  grid.appendChild(card);
+
+  // Chip
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.innerHTML = `${icon.replace('width="24"', 'width="16"').replace('height="24"', 'height="16"')} ${label}`;
+  chips.appendChild(chip);
+});
+
+// Day equipment header
+dayEquipment.forEach(key => {
+  const eq = EQUIPMENT[key];
+  if (!eq) return;
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.innerHTML = `${eq.icon.replace('width="24"', 'width="16"').replace('height="24"', 'height="16"')} ${eq.label}`;
+  dayChips.appendChild(chip);
+});
+</script>
+</body></html>

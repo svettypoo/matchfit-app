@@ -6,34 +6,42 @@ export async function GET(request, { params }) {
   try {
     const { token } = params;
 
-    const { data: invite, error } = await supabaseAdmin
+    // Try full token match first (from email link)
+    let { data: invite, error } = await supabaseAdmin
       .from("mf_invites")
-      .select("*, mf_teams(id, name, age_group, coach_id)")
+      .select("*, mf_teams(id, name, age_group, coach_id, mf_coaches(name))")
       .eq("token", token)
+      .eq("status", "pending")
       .single();
 
-    if (error || !invite) {
-      return NextResponse.json(
-        { error: "Invalid invite token" },
-        { status: 404 }
-      );
+    if (invite) {
+      return NextResponse.json({
+        invite: { id: invite.id, email: invite.email, status: invite.status },
+        team_name: invite.mf_teams?.name,
+        coach_name: invite.mf_teams?.mf_coaches?.name || "Coach",
+        team: invite.mf_teams,
+      });
     }
 
-    if (invite.status !== "pending") {
-      return NextResponse.json(
-        { error: `Invite has already been ${invite.status}` },
-        { status: 400 }
-      );
+    // Fallback: try as a team join_code (6-char manual entry)
+    const { data: team } = await supabaseAdmin
+      .from("mf_teams")
+      .select("id, name, age_group, coach_id, mf_coaches(name)")
+      .eq("join_code", token.toUpperCase())
+      .single();
+
+    if (team) {
+      return NextResponse.json({
+        team_name: team.name,
+        coach_name: team.mf_coaches?.name || "Coach",
+        team,
+      });
     }
 
-    return NextResponse.json({
-      invite: {
-        id: invite.id,
-        email: invite.email,
-        status: invite.status,
-      },
-      team: invite.mf_teams,
-    });
+    return NextResponse.json(
+      { error: "Invalid invite code" },
+      { status: 404 }
+    );
   } catch (err) {
     console.error("GET /api/invite/[token] error:", err);
     return NextResponse.json(

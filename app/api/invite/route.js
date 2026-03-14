@@ -88,7 +88,7 @@ export async function POST(request) {
     if (resendKey) {
       for (const inv of created) {
         const inviteCode = inv.token.slice(0, 6).toUpperCase();
-        const joinUrl = `${APP_URL}/join?code=${inv.token.slice(0, 6)}`;
+        const joinUrl = `${APP_URL}/join?token=${inv.token}`;
         try {
           const emailRes = await fetch("https://api.resend.com/emails", {
             method: "POST",
