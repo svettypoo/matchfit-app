@@ -10,13 +10,17 @@ export async function GET(request) {
     const search = searchParams.get("search");
     const coach_id = searchParams.get("coach_id");
     const exercise_type = searchParams.get("exercise_type");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "40"), 100);
+    const offset = (page - 1) * limit;
 
     let query = supabaseAdmin
       .from("mf_exercises")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("category")
       .order("difficulty")
-      .order("name");
+      .order("name")
+      .range(offset, offset + limit - 1);
 
     // Filter by category
     if (category) {
@@ -48,13 +52,13 @@ export async function GET(request) {
       query = query.is("coach_id", null);
     }
 
-    const { data: exercises, error } = await query;
+    const { data: exercises, error, count } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ exercises });
+    return NextResponse.json({ exercises, total: count, page, limit, totalPages: Math.ceil((count || 0) / limit) });
   } catch (err) {
     console.error("GET /api/exercises error:", err);
     return NextResponse.json(
